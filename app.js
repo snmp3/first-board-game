@@ -1,8 +1,15 @@
 // Конфигурация игры
 const GAME_CONFIG = {
   boardSize: 120,
-  jumpUpCells: [15, 28, 42, 55, 67, 79, 91, 103],
-  jumpDownCells: [22, 36, 48, 61, 74, 87, 99, 112],
+  rows: 12,
+  cols: 10,
+  cellSize: 40,
+  canvasWidth: 400,
+  canvasHeight: 480,
+  specialCells: {
+    jumpUp: [15, 28, 42, 55, 67, 79, 91, 103],
+    jumpDown: [22, 36, 48, 61, 74, 87, 99, 112]
+  },
   jumpRanges: {
     up: { min: 3, max: 7 },
     down: { min: 2, max: 5 }
@@ -55,6 +62,12 @@ const CARDS = [
     question: "Сколько будет 20 ÷ 4?",
     answer: "5",
     options: ["4", "5", "6", "7"]
+  },
+  {
+    type: "knowledge",
+    question: "Какого цвета полоски у зебры?",
+    answer: "Черно-белые",
+    options: ["Черно-белые", "Коричнево-белые", "Серо-белые", "Желто-белые"]
   }
 ];
 
@@ -216,26 +229,8 @@ class AdventureGame {
     this.updateUI();
     this.showScreen('game-screen');
 
-    // Проверяем первый ход
-    this.checkTurnStart();
-  }
-
-  // Проверка начала хода (пропуск если нужно)
-  checkTurnStart() {
-    const currentPlayer = this.gameState.players[this.gameState.currentPlayer];
-    
-    if (currentPlayer.skipNextTurn) {
-      currentPlayer.skipNextTurn = false;
-      this.showMessage(`😴 ${currentPlayer.name} пропускает ход!`);
-      
-      setTimeout(() => {
-        this.nextTurn();
-      }, 2000);
-      return;
-    }
-
-    // Если текущий игрок бот, автоматически начинаем его ход
-    if (currentPlayer.isBot) {
+    // Если первый игрок бот, автоматически начинаем его ход
+    if (this.gameState.players[0].isBot) {
       setTimeout(() => this.botTurn(), 1000);
     }
   }
@@ -245,7 +240,16 @@ class AdventureGame {
     if (this.gameState.gameEnded) return;
 
     const currentPlayer = this.gameState.players[this.gameState.currentPlayer];
-    if (currentPlayer.skipNextTurn) return;
+    
+    // Проверяем, нужно ли пропустить ход
+    if (currentPlayer.skipNextTurn) {
+      currentPlayer.skipNextTurn = false;
+      this.showMessage(`😴 ${currentPlayer.name} пропускает ход!`);
+      setTimeout(() => {
+        this.nextTurn();
+      }, 1500);
+      return;
+    }
 
     const diceElement = document.getElementById('dice');
     const diceValue = document.getElementById('dice-value');
@@ -294,7 +298,7 @@ class AdventureGame {
   handleSpecialCell(position) {
     const currentPlayer = this.gameState.players[this.gameState.currentPlayer];
     
-    if (GAME_CONFIG.jumpUpCells.includes(position)) {
+    if (GAME_CONFIG.specialCells.jumpUp.includes(position)) {
       const jump = Math.floor(Math.random() * (GAME_CONFIG.jumpRanges.up.max - GAME_CONFIG.jumpRanges.up.min + 1)) + GAME_CONFIG.jumpRanges.up.min;
       currentPlayer.position = Math.min(currentPlayer.position + jump, GAME_CONFIG.boardSize);
       this.board.updatePlayerPosition(this.gameState.currentPlayer, currentPlayer.position);
@@ -306,17 +310,22 @@ class AdventureGame {
         return;
       }
       
-      setTimeout(() => this.nextTurn(), 1500);
-    } else if (GAME_CONFIG.jumpDownCells.includes(position)) {
+      setTimeout(() => {
+        this.nextTurn();
+      }, 1500);
+    } else if (GAME_CONFIG.specialCells.jumpDown.includes(position)) {
       const jump = Math.floor(Math.random() * (GAME_CONFIG.jumpRanges.down.max - GAME_CONFIG.jumpRanges.down.min + 1)) + GAME_CONFIG.jumpRanges.down.min;
       currentPlayer.position = Math.max(currentPlayer.position - jump, 0);
       this.board.updatePlayerPosition(this.gameState.currentPlayer, currentPlayer.position);
       this.showMessage(`😞 ${currentPlayer.name} откатывается назад на ${jump} клеток!`);
       
-      setTimeout(() => this.nextTurn(), 1500);
+      setTimeout(() => {
+        this.nextTurn();
+      }, 1500);
     } else {
-      // На всех остальных клетках показываем карточку с заданием
+      // Обычная клетка - показываем карточку с заданием
       this.cardSystem.showCard(currentPlayer);
+      return; // Не переключаем ход до завершения карточки
     }
   }
 
@@ -329,7 +338,12 @@ class AdventureGame {
     }
 
     this.updateUI();
-    this.checkTurnStart();
+
+    // Если следующий игрок бот
+    const nextPlayer = this.gameState.players[this.gameState.currentPlayer];
+    if (nextPlayer.isBot) {
+      setTimeout(() => this.botTurn(), 1000);
+    }
   }
 
   // Ход бота
@@ -396,16 +410,11 @@ class AdventureGame {
     this.gameState.players.forEach((player, index) => {
       const playerDiv = document.createElement('div');
       playerDiv.className = `player-status ${index === this.gameState.currentPlayer ? 'active' : ''}`;
-      
-      let statusText = '';
-      if (player.skipNextTurn) {
-        statusText = ' 😴';
-      }
-      
+      const sleepIcon = player.skipNextTurn ? ' 😴' : '';
       playerDiv.innerHTML = `
         <div class="player-info">
           <div class="player-color-indicator" style="background-color: ${player.color}"></div>
-          <span>${player.name}${player.isBot ? ' 🤖' : ''}${statusText}</span>
+          <span>${player.name}${player.isBot ? ' 🤖' : ''}${sleepIcon}</span>
         </div>
         <span class="player-position">${player.position}</span>
       `;
@@ -460,66 +469,65 @@ class AdventureGame {
   saveSettings() {
     this.settings.soundEnabled = document.getElementById('sound-enabled').checked;
     this.settings.volume = document.getElementById('volume-slider').value;
-    localStorage.setItem('adventure-game-settings', JSON.stringify(this.settings));
+    // Не используем localStorage согласно инструкциям
   }
 
   // Загрузка настроек
   loadSettings() {
-    const saved = localStorage.getItem('adventure-game-settings');
-    if (saved) {
-      this.settings = { ...this.settings, ...JSON.parse(saved) };
-      document.getElementById('sound-enabled').checked = this.settings.soundEnabled;
-      document.getElementById('volume-slider').value = this.settings.volume;
-    }
+    // Используем значения по умолчанию, не загружаем из localStorage
+    document.getElementById('sound-enabled').checked = this.settings.soundEnabled;
+    document.getElementById('volume-slider').value = this.settings.volume;
   }
 }
 
-// Класс игрового поля
+// Класс игрового поля с зигзагообразным расположением
 class GameBoard {
   constructor() {
     this.canvas = document.getElementById('game-board');
     this.ctx = this.canvas.getContext('2d');
+    this.canvas.width = GAME_CONFIG.canvasWidth;
+    this.canvas.height = GAME_CONFIG.canvasHeight;
     this.cells = this.generateCells();
     this.draw();
   }
 
-  // Генерация клеток по спирали
+  // Генерация клеток в зигзагообразном порядке
   generateCells() {
     const cells = [];
-    const boardSize = 20; // 20x20 сетка
-    const cellSize = this.canvas.width / boardSize;
-    
-    // Спиральное расположение клеток
-    let x = 0, y = boardSize - 1;
-    let dx = 1, dy = 0;
+    const cellSize = GAME_CONFIG.cellSize;
+    const cols = GAME_CONFIG.cols;
+    const rows = GAME_CONFIG.rows;
     
     for (let i = 1; i <= GAME_CONFIG.boardSize; i++) {
-      const pixelX = x * cellSize;
-      const pixelY = y * cellSize;
+      // Вычисляем ряд и колонку
+      const row = Math.floor((i - 1) / cols);
+      const col = (i - 1) % cols;
+      
+      // Зигзагообразная логика
+      let x, y;
+      if (row % 2 === 0) {
+        // Четный ряд: слева направо
+        x = col * cellSize;
+      } else {
+        // Нечетный ряд: справа налево
+        x = (cols - 1 - col) * cellSize;
+      }
+      
+      // Y координата (переворачиваем, чтобы первый ряд был внизу)
+      y = (rows - 1 - row) * cellSize;
       
       let cellType = 'normal';
-      if (GAME_CONFIG.jumpUpCells.includes(i)) cellType = 'jumpUp';
-      else if (GAME_CONFIG.jumpDownCells.includes(i)) cellType = 'jumpDown';
+      if (GAME_CONFIG.specialCells.jumpUp.includes(i)) cellType = 'jumpUp';
+      else if (GAME_CONFIG.specialCells.jumpDown.includes(i)) cellType = 'jumpDown';
       
       cells.push({
         number: i,
-        x: pixelX,
-        y: pixelY,
+        x: x,
+        y: y,
         size: cellSize,
-        type: cellType
+        type: cellType,
+        row: row
       });
-
-      // Спиральная логика
-      const nextX = x + dx;
-      const nextY = y + dy;
-      
-      if (nextX < 0 || nextX >= boardSize || nextY < 0 || nextY >= boardSize ||
-          cells.some(cell => Math.abs(cell.x - nextX * cellSize) < 1 && Math.abs(cell.y - nextY * cellSize) < 1)) {
-        [dx, dy] = [-dy, dx]; // Поворот направления
-      }
-      
-      x += dx;
-      y += dy;
     }
     
     return cells;
@@ -527,26 +535,33 @@ class GameBoard {
 
   // Отрисовка доски
   draw() {
+    // Фон доски
     this.ctx.fillStyle = '#87CEEB';
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     
     this.cells.forEach(cell => {
-      // Цвет клетки в зависимости от типа
-      let fillColor = '#DEB887';
-      if (cell.type === 'jumpUp') fillColor = '#90EE90';
-      else if (cell.type === 'jumpDown') fillColor = '#FFB6C1';
+      // Цвет клетки в зависимости от типа и ряда
+      let fillColor;
+      if (cell.type === 'jumpUp') {
+        fillColor = '#90EE90'; // Зеленый для прыжков вперед
+      } else if (cell.type === 'jumpDown') {
+        fillColor = '#FFB6C1'; // Розовый для прыжков назад
+      } else {
+        // Альтернативные цвета для четных и нечетных рядов
+        fillColor = cell.row % 2 === 0 ? '#DEB887' : '#F5DEB3';
+      }
       
       this.ctx.fillStyle = fillColor;
-      this.ctx.fillRect(cell.x + 2, cell.y + 2, cell.size - 4, cell.size - 4);
+      this.ctx.fillRect(cell.x + 1, cell.y + 1, cell.size - 2, cell.size - 2);
       
       // Рамка клетки
       this.ctx.strokeStyle = '#8B4513';
       this.ctx.lineWidth = 1;
-      this.ctx.strokeRect(cell.x + 2, cell.y + 2, cell.size - 4, cell.size - 4);
+      this.ctx.strokeRect(cell.x + 1, cell.y + 1, cell.size - 2, cell.size - 2);
       
       // Номер клетки
       this.ctx.fillStyle = '#000';
-      this.ctx.font = `${Math.max(8, cell.size * 0.3)}px Arial`;
+      this.ctx.font = `${Math.max(10, cell.size * 0.25)}px Arial`;
       this.ctx.textAlign = 'center';
       this.ctx.textBaseline = 'middle';
       this.ctx.fillText(
@@ -574,7 +589,8 @@ class GameBoard {
       this.draw();
       this.updateAllPlayers(game.gameState.players, playerId, {
         x: fromCell.x + (toCell.x - fromCell.x) * progress,
-        y: fromCell.y + (toCell.y - fromCell.y) * progress
+        y: fromCell.y + (toCell.y - fromCell.y) * progress,
+        size: fromCell.size
       });
       
       if (progress < 1) {
@@ -607,15 +623,15 @@ class GameBoard {
 
   // Отрисовка игрока
   drawPlayer(player, cell, playerId) {
-    const offsetX = (playerId % 2) * 8 - 4;
-    const offsetY = Math.floor(playerId / 2) * 8 - 4;
+    const offsetX = (playerId % 2) * 12 - 6;
+    const offsetY = Math.floor(playerId / 2) * 12 - 6;
     
     this.ctx.fillStyle = player.color;
     this.ctx.beginPath();
     this.ctx.arc(
       cell.x + cell.size / 2 + offsetX,
       cell.y + cell.size / 2 + offsetY,
-      6,
+      8,
       0,
       2 * Math.PI
     );
@@ -687,7 +703,7 @@ class CardSystem {
     } else {
       const input = document.getElementById('card-answer-input');
       if (!input) return;
-      userAnswer = input.value.trim().toLowerCase();
+      userAnswer = input.value.trim();
     }
     
     const isCorrect = userAnswer.toLowerCase() === this.currentCard.answer.toLowerCase();
@@ -702,8 +718,8 @@ class CardSystem {
       game.showMessage(`✅ Правильно! ${this.currentPlayer.name} продолжает игру.`);
     } else {
       game.playSound('wrong');
+      game.showMessage(`❌ Неправильно! ${this.currentPlayer.name} пропустит следующий ход.`);
       this.currentPlayer.skipNextTurn = true;
-      game.showMessage(`❌ Неправильно! ${this.currentPlayer.name} пропускает следующий ход.`);
     }
     
     // Проверка победы
@@ -759,7 +775,7 @@ class BotSystem {
   mediumStrategy(bot, gameState) {
     // Анализ ближайших клеток
     const position = bot.position;
-    const dangerousCells = GAME_CONFIG.jumpDownCells;
+    const dangerousCells = GAME_CONFIG.specialCells.jumpDown;
     
     // Простой анализ: избегать красных клеток если возможно
     for (let i = 1; i <= 6; i++) {
@@ -781,25 +797,6 @@ class BotSystem {
     if (bot.position < leadingPlayer.position - 10) {
       // Агрессивная игра для догона
     }
-  }
-
-  // Ответ бота на карточку
-  answerCard(bot, card) {
-    let correctRate = 0.5; // По умолчанию 50%
-    
-    switch (bot.botDifficulty) {
-      case 'easy':
-        correctRate = 0.3; // 30% правильных ответов
-        break;
-      case 'medium':
-        correctRate = 0.6; // 60% правильных ответов
-        break;
-      case 'hard':
-        correctRate = 0.8; // 80% правильных ответов
-        break;
-    }
-    
-    return Math.random() < correctRate;
   }
 }
 
