@@ -49,6 +49,13 @@ async function initializeGame() {
         setTimeout(() => {
             log('Проверяем состояние системы...');
             window.debugGame?.();
+            
+            // ДОПОЛНИТЕЛЬНАЯ ОТЛАДКА: проверяем интерфейс тем
+            if (window.game && window.game.debugThemesInterface) {
+                log('🔍 Отладка интерфейса тем:');
+                const themesDebug = window.game.debugThemesInterface();
+                log('Результат отладки тем:', themesDebug);
+            }
         }, 1000);
         
     } catch (error) {
@@ -128,13 +135,10 @@ function setupGlobalHandlers(game) {
             }
             
             const selectedThemes = [];
-            const checkboxes = ['math', 'geography', 'history', 'biology', 'riddles'];
+            const checkboxes = document.querySelectorAll('input[id^="theme-"]:checked');
             
-            checkboxes.forEach(theme => {
-                const checkbox = document.getElementById(`theme-${theme}`);
-                if (checkbox?.checked) {
-                    selectedThemes.push(theme);
-                }
+            checkboxes.forEach(checkbox => {
+                selectedThemes.push(checkbox.value);
             });
             
             if (selectedThemes.length === 0) {
@@ -175,6 +179,8 @@ function setupGlobalHandlers(game) {
         console.log('EventHandler инициализирован:', game.eventHandler.initialized);
         console.log('ScreenManager инициализирован:', game.screenManager.initialized);
         console.log('Загружены ли вопросы:', game.questionLoader.loaded);
+        console.log('Доступные предметы:', game.availableSubjects);
+        console.log('Выбранные темы:', [...game.selectedThemes]);
         
         // Проверяем кнопки
         const buttons = ['add-player', 'add-bot', 'start-game', 'reset-game'];
@@ -188,7 +194,32 @@ function setupGlobalHandlers(game) {
             });
         });
         
+        // Проверяем чекбоксы тем
+        const themeCheckboxes = document.querySelectorAll('input[id^="theme-"]');
+        console.log(`Найдено ${themeCheckboxes.length} чекбоксов тем:`);
+        themeCheckboxes.forEach(cb => {
+            console.log(`  ${cb.id}: ${cb.checked ? 'checked' : 'unchecked'} (value: ${cb.value})`);
+        });
+        
         return game.getDebugInfo();
+    };
+    
+    // Функция для принудительного пересоздания интерфейса тем
+    window.recreateThemesInterface = async () => {
+        log('Принудительное пересоздание интерфейса тем...');
+        try {
+            await game.createSubjectsInterface();
+            log('Интерфейс тем пересоздан');
+            
+            // Обновляем обработчики событий
+            game.eventHandler.setupThemeCheckboxes();
+            log('Обработчики чекбоксов обновлены');
+            
+            return true;
+        } catch (error) {
+            error('Ошибка пересоздания интерфейса тем:', error);
+            return false;
+        }
     };
     
     log('Глобальные обработчики настроены');
