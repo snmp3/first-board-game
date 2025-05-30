@@ -18,8 +18,9 @@ export class Game {
         this.modalManager = new ModalManager();
         this.eventHandler = new EventHandler(this);
         
-        // Игровые настройки
-        this.selectedThemes = new Set(['math', 'riddles']);
+        // Игровые настройки (будут загружены из конфигурации)
+        this.selectedThemes = new Set(); // Пустой набор, загрузится из конфигурации
+        this.availableSubjects = [];
         this.currentQuestion = null;
         this.dice = null;
         
@@ -51,7 +52,7 @@ export class Game {
             await this.waitForDOMReady();
             this.log('✅ DOM полностью готов');
             
-            // Загрузка вопросов (не зависит от DOM)
+            // Загрузка вопросов и получение доступных предметов
             this.log('📚 Загрузка вопросов...');
             const questionsLoaded = await this.questionLoader.loadQuestions();
             if (!questionsLoaded) {
@@ -59,7 +60,16 @@ export class Game {
             }
             this.log('✅ Вопросы загружены');
             
-            // Инициализация Canvas рендерера (не зависит от DOM на этом этапе)
+            // Получаем доступные предметы из загрузчика
+            this.availableSubjects = this.questionLoader.getAvailableSubjects();
+            this.log('🎯 Доступные предметы:', this.availableSubjects);
+            
+            // Устанавливаем темы по умолчанию
+            const defaultSubjects = this.questionLoader.getDefaultSubjects();
+            this.selectedThemes = new Set(defaultSubjects);
+            this.log('🎯 Темы по умолчанию:', defaultSubjects);
+            
+            // Инициализация Canvas рендерера
             this.canvasRenderer = new CanvasRenderer();
             this.log('✅ CanvasRenderer создан');
             
@@ -67,7 +77,10 @@ export class Game {
             await this.waitForCriticalElements();
             this.log('✅ Все критически важные элементы найдены');
             
-            // ТОЛЬКО ПОСЛЕ этого инициализируем компоненты, зависящие от DOM
+            // ВАЖНО: Создаем интерфейс разделов знаний ДО инициализации EventHandler
+            this.log('🎨 Создание интерфейса разделов знаний...');
+            await this.createSubjectsInterface();
+            this.log('✅ Интерфейс разделов знаний создан');
             
             // Инициализация менеджера экранов
             this.screenManager.initialize();
@@ -77,7 +90,7 @@ export class Game {
             this.modalManager.initialize();
             this.log('✅ ModalManager инициализирован');
             
-            // Настройка обработчиков событий
+            // Настройка обработчиков событий (ПОСЛЕ создания интерфейса)
             this.log('🎮 Настройка обработчиков событий...');
             this.eventHandler.setupEventListeners();
             this.log('✅ EventHandler настроен');
@@ -105,16 +118,105 @@ export class Game {
         }
     }
 
+    async createSubjectsInterface() {
+        this.log('🎨 Начинаем создание интерфейса разделов знаний...');
+        
+        const container = document.querySelector('.themes-selection');
+        if (!container) {
+            this.error('❌ Контейнер .themes-selection не найден в DOM');
+            return;
+        }
+        this.log('✅ Контейнер найден:', container);
+
+        // Скрываем индикатор загрузки
+        const loadingIndicator = document.getElementById('themes-loading');
+        if (loadingIndicator) {
+            loadingIndicator.style.display = 'none';
+            this.log('✅ Индикатор загрузки скрыт');
+        }
+
+        // Очищаем существующие чекбоксы
+        const existingCheckboxes = container.querySelectorAll('.theme-checkbox');
+        existingCheckboxes.forEach(checkbox => checkbox.remove());
+        this.log(`🧹 Очищено ${existingCheckboxes.length} существующих чекбоксов`);
+
+        // Проверяем наличие доступных предметов
+        if (!this.availableSubjects || this.availableSubjects.length === 0) {
+            this.error('❌ Нет доступных предметов для создания интерфейса');
+            const errorMsg = document.createElement('div');
+            errorMsg.style.textAlign = 'center';
+            errorMsg.style.color = '#e74c3c';
+            errorMsg.style.padding = '20px';
+            errorMsg.innerHTML = '⚠️ Не удалось загрузить разделы знаний.<br>Используются встроенные вопросы.';
+            container.appendChild(errorMsg);
+            return;
+        }
+
+        this.log(`📋 Создаем чекбоксы для ${this.availableSubjects.length} предметов`);
+
+        // Создаем заголовок если его нет
+        let title = container.querySelector('h3');
+        if (!title) {
+            title = document.createElement('h3');
+            title.textContent = 'Выберите темы вопросов:';
+            container.appendChild(title);
+            this.log('✅ Заголовок создан');
+        }
+
+        // Ждем небольшую задержку для стабильности DOM
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        // Создаем чекбоксы для каждого доступного предмета
+        this.availableSubjects.forEach((subject, index) => {
+            this.log(`📝 Создаем чекбокс для: ${subject.name} (${subject.id})`);
+            
+            const checkboxContainer = document.createElement('label');
+            checkboxContainer.className = 'theme-checkbox';
+            
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.id = `theme-${subject.id}`;
+            checkbox.value = subject.id;
+            checkbox.checked = this.selectedThemes.has(subject.id);
+            
+            const span = document.createElement('span');
+            span.innerHTML = `${subject.icon} ${subject.name}`;
+            if (subject.description) {
+                span.title = subject.description;
+            }
+            
+            checkboxContainer.appendChild(checkbox);
+            checkboxContainer.appendChild(span);
+            container.appendChild(checkboxContainer);
+            
+            this.log(`✅ Чекбокс создан для: ${subject.name} (ID: theme-${subject.id}, checked: ${checkbox.checked})`);
+        });
+
+        // Принудительно обновляем DOM
+        container.offsetHeight; // Trigger reflow
+        
+        this.log('🎨 Интерфейс разделов знаний создан успешно');
+        
+        // Проверяем результат
+        const createdCheckboxes = container.querySelectorAll('.theme-checkbox');
+        this.log(`✅ Создано ${createdCheckboxes.length} чекбоксов в DOM`);
+        
+        // Выводим детальную информацию о созданных элементах
+        createdCheckboxes.forEach((cb, i) => {
+            const input = cb.querySelector('input');
+            const span = cb.querySelector('span');
+            this.log(`   ${i + 1}. ID: ${input?.id}, Value: ${input?.value}, Checked: ${input?.checked}, Text: ${span?.textContent}`);
+        });
+    }
+
     // Ожидание готовности DOM
     waitForDOMReady() {
         return new Promise((resolve) => {
             if (document.readyState === 'complete') {
                 resolve();
             } else if (document.readyState === 'interactive') {
-                // DOM готов, но ресурсы еще загружаются
-                setTimeout(resolve, 100); // Небольшая задержка для стабильности
+                setTimeout(resolve, 100);
             } else {
-                // DOM еще загружается
                 const handleReady = () => {
                     document.removeEventListener('DOMContentLoaded', handleReady);
                     setTimeout(resolve, 100);
@@ -128,14 +230,14 @@ export class Game {
     waitForCriticalElements() {
         return new Promise((resolve, reject) => {
             const criticalElements = [
-                'menu',           // Главное меню
-                'game',           // Игровой экран  
-                'add-player',     // Кнопка добавления игрока
-                'players-list'    // Список игроков
+                'menu',
+                'game', 
+                'add-player',
+                'players-list'
             ];
             
             let attempts = 0;
-            const maxAttempts = 50; // 5 секунд максимум
+            const maxAttempts = 50;
             
             const checkElements = () => {
                 attempts++;
@@ -144,6 +246,12 @@ export class Game {
                     const element = document.getElementById(id);
                     return !element;
                 });
+                
+                // Проверяем наличие контейнера тем отдельно
+                const themesContainer = document.querySelector('.themes-selection');
+                if (!themesContainer) {
+                    missingElements.push('themes-selection');
+                }
                 
                 if (missingElements.length === 0) {
                     this.log('Все критически важные элементы найдены:', criticalElements);
@@ -498,13 +606,19 @@ export class Game {
             this.gameState.reset();
             this.dice = null;
             this.currentQuestion = null;
-            this.selectedThemes = new Set(['math', 'geography']);
+            
+            // Сбрасываем к темам по умолчанию
+            const defaultSubjects = this.questionLoader.getDefaultSubjects();
+            this.selectedThemes = new Set(defaultSubjects);
             
             // Возврат в главное меню
             this.screenManager.showScreen(SCREENS.MENU);
             
             // Очистка отображения
             this.updatePlayersDisplay();
+            
+            // Обновляем чекбоксы тем к состоянию по умолчанию
+            this.resetThemeCheckboxes();
             
             // Очистка Canvas
             const canvas = document.getElementById('game-board');
@@ -518,6 +632,15 @@ export class Game {
         } catch (error) {
             this.error('Ошибка сброса игры:', error);
         }
+    }
+
+    resetThemeCheckboxes() {
+        const defaultSubjects = this.questionLoader.getDefaultSubjects();
+        const checkboxes = document.querySelectorAll('input[id^="theme-"]');
+        
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = defaultSubjects.includes(checkbox.value);
+        });
     }
 
     // Методы обновления интерфейса
@@ -625,6 +748,7 @@ export class Game {
             currentPlayer: this.gameState.getCurrentPlayer()?.name,
             currentScreen: this.screenManager.getCurrentScreen(),
             selectedThemes: [...this.selectedThemes],
+            availableSubjects: this.availableSubjects.map(s => s.name),
             dice: this.dice,
             questionsLoaded: this.questionLoader.loaded
         };
@@ -642,6 +766,33 @@ export class Game {
             this.forceAddTestPlayers();
         }
         this.startGame();
+    }
+
+    // Отладочный метод для проверки интерфейса тем
+    debugThemesInterface() {
+        this.log('=== ОТЛАДКА ИНТЕРФЕЙСА ТЕМ ===');
+        this.log('availableSubjects:', this.availableSubjects);
+        this.log('selectedThemes:', [...this.selectedThemes]);
+        
+        const container = document.querySelector('.themes-selection');
+        this.log('Контейнер тем:', container);
+        
+        if (container) {
+            const checkboxes = container.querySelectorAll('.theme-checkbox');
+            this.log(`Найдено ${checkboxes.length} чекбоксов в контейнере`);
+            
+            checkboxes.forEach((cb, i) => {
+                const input = cb.querySelector('input');
+                const span = cb.querySelector('span');
+                this.log(`  ${i + 1}. ${input?.id}: ${span?.textContent} (checked: ${input?.checked})`);
+            });
+        }
+        
+        return {
+            container: !!container,
+            availableSubjects: this.availableSubjects.length,
+            checkboxes: container?.querySelectorAll('.theme-checkbox').length || 0
+        };
     }
 
     // Геттеры для внешнего доступа
