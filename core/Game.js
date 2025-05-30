@@ -382,7 +382,8 @@ export class Game {
                 this.modalManager.showMessage(
                     `${currentPlayer.name} попал на специальную клетку!`,
                     `${message}\nНовая позиция: ${jumpDestination + 1}`,
-                    () => this.continueAfterMove()
+                    () => this.continueAfterMove(),
+                    { autoClose: true, autoCloseDelay: 2000 }
                 );
                 
                 this.log(`🪜 ${currentPlayer.name}: ${oldPosition + 1} → ${newPosition + 1} → ${jumpDestination + 1} (${message})`);
@@ -450,13 +451,38 @@ export class Game {
             
             this.log(`🤖 Бот отвечает: "${answer}" (${isCorrect ? 'правильно' : 'неправильно'})`);
             
-            this.handleAnswer(answer);
+            // ИСПРАВЛЕНИЕ: Сначала показываем ответ бота, потом обрабатываем
+            currentPlayer.questionsAnswered++;
+            
+            if (isCorrect) {
+                currentPlayer.correctAnswers++;
+                // Для бота: автозакрытие через 1 секунду
+                this.modalManager.showBotMessage(
+                    'Бот ответил правильно! 🤖🎉',
+                    `Вопрос: ${this.currentQuestion.text}\nОтвет: ${answer}`,
+                    () => this.nextTurn()
+                );
+            } else {
+                // ИСПРАВЛЕНИЕ: Устанавливаем пропуск хода для бота ТАК ЖЕ как для игрока
+                this.gameState.setSkipTurns(currentPlayer.id, 1);
+                
+                // Для бота: автозакрытие через 1 секунду
+                this.modalManager.showBotMessage(
+                    'Бот ответил неправильно 🤖😔',
+                    `Вопрос: ${this.currentQuestion.text}\nОтвет бота: ${answer}\nПравильный ответ: ${this.currentQuestion.answer}\nБот пропускает следующий ход.`,
+                    () => this.nextTurnAfterWrongAnswer()
+                );
+            }
+
+            this.currentQuestion = null;
+            
         } catch (error) {
             this.error('Ошибка обработки ответа бота:', error);
             this.nextTurn();
         }
     }
 
+    // ИСПРАВЛЕННЫЙ метод обработки ответов игроков
     handleAnswer(userAnswer) {
         try {
             const currentPlayer = this.gameState.getCurrentPlayer();
@@ -472,18 +498,20 @@ export class Game {
             
             if (isCorrect) {
                 currentPlayer.correctAnswers++;
-                this.modalManager.showMessage(
-                    'Правильно! 🎉', 
+                // Для игрока: автозакрытие при правильном ответе через 1 секунду
+                this.modalManager.showSuccessMessage(
                     'Отличная работа! Продолжайте игру.',
-                    () => this.nextTurn()
+                    () => this.nextTurn(),
+                    true // autoClose = true
                 );
             } else {
                 this.gameState.setSkipTurns(currentPlayer.id, 1);
                 
-                this.modalManager.showMessage(
-                    'Неправильно 😔', 
-                    `Правильный ответ: ${this.currentQuestion.answer}.\nВы пропускаете следующий ход.`,
-                    () => this.nextTurnAfterWrongAnswer()
+                // Для игрока: НЕТ автозакрытия при неправильном ответе
+                this.modalManager.showErrorMessage(
+                    `Правильный ответ: ${this.currentQuestion.answer}\nВы пропускаете следующий ход.`,
+                    () => this.nextTurnAfterWrongAnswer(),
+                    false // autoClose = false
                 );
             }
 
@@ -497,6 +525,7 @@ export class Game {
 
     nextTurnAfterWrongAnswer() {
         try {
+            // ИСПРАВЛЕНИЕ: Используем правильную логику для всех игроков (включая ботов)
             this.gameState.forceNextPlayer();
             
             this.updateCurrentPlayerDisplay();
