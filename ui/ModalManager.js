@@ -1,273 +1,268 @@
 export class ModalManager {
     constructor() {
-        this.modals = new Map();
-        this.currentModal = null;
         this.initialized = false;
-        this.keyboardHandler = this.handleKeyboard.bind(this);
+        this.currentModal = null;
+        this.autoCloseTimer = null;
+        this.debug = true;
+    }
+
+    log(...args) {
+        if (this.debug) {
+            console.log('[ModalManager]', ...args);
+        }
+    }
+
+    error(...args) {
+        console.error('[ModalManager]', ...args);
     }
 
     initialize() {
-        this.findModals();
-        this.setupEventListeners();
-        this.initialized = true;
-        console.log('ModalManager инициализирован');
-    }
-
-    findModals() {
-        // Находим все модальные окна
-        const modalIds = ['question-modal', 'message-modal', 'results-modal'];
+        this.log('Инициализация ModalManager...');
         
-        modalIds.forEach(id => {
-            const element = document.getElementById(id);
-            if (element) {
-                this.modals.set(id, {
-                    element,
-                    isOpen: false,
-                    config: this.getModalConfig(id)
-                });
-            } else {
-                console.warn(`Модальное окно ${id} не найдено`);
-            }
-        });
-    }
-
-    getModalConfig(modalId) {
-        const configs = {
-            'question-modal': {
-                closeOnEscape: true,
-                closeOnBackdrop: false,
-                focusInput: true,
-                autoHeight: true
-            },
-            'message-modal': {
-                closeOnEscape: true,
-                closeOnBackdrop: true,
-                focusInput: false,
-                autoHeight: true
-            },
-            'results-modal': {
-                closeOnEscape: true,
-                closeOnBackdrop: true,
-                focusInput: false,
-                autoHeight: false
-            }
-        };
+        // Получаем ссылки на модальные окна
+        this.questionModal = document.getElementById('question-modal');
+        this.messageModal = document.getElementById('message-modal');
+        this.resultsModal = document.getElementById('results-modal');
         
-        return configs[modalId] || {};
-    }
-
-    setupEventListeners() {
-        // Настройка обработчиков для всех модальных окон
-        this.modals.forEach((modal, id) => {
-            // Клик по фону для закрытия
-            modal.element.addEventListener('click', (e) => {
-                if (e.target === modal.element && modal.config.closeOnBackdrop) {
-                    this.closeModal(id);
-                }
-            });
-
-            // Предотвращение закрытия при клике по содержимому
-            const content = modal.element.querySelector('.modal-content');
-            if (content) {
-                content.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                });
-            }
-        });
-    }
-
-    openModal(modalId, options = {}) {
-        if (!this.modals.has(modalId)) {
-            console.error(`Модальное окно ${modalId} не найдено`);
+        if (!this.questionModal || !this.messageModal || !this.resultsModal) {
+            this.error('Не все модальные окна найдены в DOM');
             return false;
         }
-
-        // Закрываем текущее модальное окно
-        if (this.currentModal) {
-            this.closeModal(this.currentModal);
-        }
-
-        const modal = this.modals.get(modalId);
-        modal.element.classList.add('active');
-        modal.isOpen = true;
-        this.currentModal = modalId;
-
-        // Добавляем обработчик клавиатуры
-        document.addEventListener('keydown', this.keyboardHandler);
-
-        // Фокус на поле ввода если нужно
-        if (modal.config.focusInput && options.focusInput !== false) {
-            setTimeout(() => {
-                const input = modal.element.querySelector('input[type="text"]');
-                if (input) {
-                    input.focus();
-                    input.select();
-                }
-            }, 100);
-        }
-
-        // Анимация появления
-        requestAnimationFrame(() => {
-            modal.element.style.opacity = '1';
-        });
-
+        
+        this.setupEventListeners();
+        this.initialized = true;
+        this.log('✅ ModalManager инициализирован');
+        
         return true;
     }
 
-    closeModal(modalId) {
-        if (!modalId) {
-            modalId = this.currentModal;
-        }
-
-        if (!modalId || !this.modals.has(modalId)) {
-            return false;
-        }
-
-        const modal = this.modals.get(modalId);
+    setupEventListeners() {
+        // Обработчики для модального окна вопроса
+        const submitAnswerBtn = document.getElementById('submit-answer');
+        const skipQuestionBtn = document.getElementById('skip-question');
+        const answerInput = document.getElementById('answer-input');
         
-        // Анимация исчезновения
-        modal.element.style.opacity = '0';
+        if (submitAnswerBtn) {
+            submitAnswerBtn.addEventListener('click', () => {
+                this.submitAnswer();
+            });
+        }
         
-        setTimeout(() => {
-            modal.element.classList.remove('active');
-            modal.isOpen = false;
+        if (skipQuestionBtn) {
+            skipQuestionBtn.addEventListener('click', () => {
+                this.skipQuestion();
+            });
+        }
+        
+        if (answerInput) {
+            // ИСПРАВЛЕНИЕ: Убираем все ограничения на ввод символов, включая пробелы
+            answerInput.addEventListener('keypress', (e) => {
+                // Разрешаем ввод ВСЕХ символов, включая пробелы
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this.submitAnswer();
+                }
+                // Убираем любые другие ограничения - разрешаем все символы
+            });
             
-            if (this.currentModal === modalId) {
-                this.currentModal = null;
-                document.removeEventListener('keydown', this.keyboardHandler);
+            // Убираем ограничения на paste (вставку)
+            answerInput.addEventListener('paste', (e) => {
+                // Разрешаем вставку любого текста
+            });
+            
+            // Убираем ограничения на input
+            answerInput.addEventListener('input', (e) => {
+                // Разрешаем любой ввод
+            });
+        }
+        
+        // Обработчики для модального окна сообщений
+        const closeMessageBtn = document.getElementById('close-message');
+        if (closeMessageBtn) {
+            closeMessageBtn.addEventListener('click', () => {
+                this.closeCurrentModal();
+            });
+        }
+        
+        // Обработчики для модального окна результатов
+        const closeResultsBtn = document.getElementById('close-results');
+        if (closeResultsBtn) {
+            closeResultsBtn.addEventListener('click', () => {
+                this.closeCurrentModal();
+            });
+        }
+        
+        // Закрытие модальных окон по клику вне области
+        [this.questionModal, this.messageModal, this.resultsModal].forEach(modal => {
+            if (modal) {
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) {
+                        this.closeCurrentModal();
+                    }
+                });
             }
-        }, 300);
+        });
+        
+        // Закрытие по клавише Escape
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && this.currentModal) {
+                this.closeCurrentModal();
+            }
+        });
+    }
 
+    showQuestion(questionText, answerCallback) {
+        this.log('Показ вопроса:', questionText);
+        
+        this.closeCurrentModal();
+        
+        const questionTextElement = document.getElementById('question-text');
+        const answerInput = document.getElementById('answer-input');
+        
+        if (questionTextElement) {
+            questionTextElement.textContent = questionText;
+        }
+        
+        if (answerInput) {
+            answerInput.value = '';
+            answerInput.placeholder = 'Введите ответ (можно использовать пробелы)';
+        }
+        
+        this.answerCallback = answerCallback;
+        this.showModal(this.questionModal);
+        
+        // Фокус на поле ввода
+        setTimeout(() => {
+            if (answerInput) {
+                answerInput.focus();
+            }
+        }, 100);
+    }
+
+    // ИСПРАВЛЕННЫЙ метод с поддержкой автозакрытия для ботов и игроков
+    showMessage(title, message, callback = null, options = {}) {
+        const { 
+            autoClose = false, 
+            autoCloseDelay = 1000, 
+            isBot = false 
+        } = options;
+        
+        this.log(`Показ сообщения: ${title} (автозакрытие: ${autoClose}, бот: ${isBot})`);
+        
+        this.closeCurrentModal();
+        
+        const titleElement = document.getElementById('message-title');
+        const messageElement = document.getElementById('message-text');
+        
+        if (titleElement) {
+            titleElement.textContent = title;
+        }
+        
+        if (messageElement) {
+            // Обрабатываем переносы строк в сообщении
+            messageElement.innerHTML = message.replace(/\n/g, '<br>');
+        }
+        
+        this.messageCallback = callback;
+        this.showModal(this.messageModal);
+        
+        // Автозакрытие для ботов или при правильном ответе игрока
+        if (autoClose) {
+            this.log(`Автозакрытие через ${autoCloseDelay}ms`);
+            this.autoCloseTimer = setTimeout(() => {
+                this.log('Автозакрытие модального окна');
+                this.closeCurrentModal();
+            }, autoCloseDelay);
+        }
+    }
+
+    showResults(resultsHTML, callback = null) {
+        this.log('Показ результатов игры');
+        
+        this.closeCurrentModal();
+        
+        const resultsContent = document.getElementById('results-content');
+        if (resultsContent) {
+            resultsContent.innerHTML = resultsHTML;
+        }
+        
+        this.resultsCallback = callback;
+        this.showModal(this.resultsModal);
+    }
+
+    showModal(modal) {
+        if (!modal) return false;
+        
+        this.currentModal = modal;
+        modal.classList.add('active');
+        
+        // Блокируем прокрутку страницы
+        document.body.style.overflow = 'hidden';
+        
         return true;
     }
 
     closeCurrentModal() {
-        if (this.currentModal) {
-            this.closeModal(this.currentModal);
+        // Очищаем таймер автозакрытия
+        if (this.autoCloseTimer) {
+            clearTimeout(this.autoCloseTimer);
+            this.autoCloseTimer = null;
+            this.log('Таймер автозакрытия очищен');
         }
-    }
-
-    showQuestion(questionText, onAnswer) {
-        const modal = this.modals.get('question-modal');
-        if (!modal) return false;
-
-        // Заполняем содержимое
-        const questionElement = document.getElementById('question-text');
-        const answerInput = document.getElementById('answer-input');
-        const submitBtn = document.getElementById('submit-answer');
-        const skipBtn = document.getElementById('skip-question');
-
-        if (questionElement) questionElement.textContent = questionText;
-        if (answerInput) answerInput.value = '';
-
-        // Настройка обработчиков
-        const handleAnswer = () => {
-            const answer = answerInput ? answerInput.value.trim() : '';
-            this.closeModal('question-modal');
-            if (onAnswer) onAnswer(answer);
-        };
-
-        const handleSkip = () => {
-            this.closeModal('question-modal');
-            if (onAnswer) onAnswer('');
-        };
-
-        // Удаляем старые обработчики
-        if (submitBtn) {
-            submitBtn.replaceWith(submitBtn.cloneNode(true));
-            document.getElementById('submit-answer').addEventListener('click', handleAnswer);
-        }
-
-        if (skipBtn) {
-            skipBtn.replaceWith(skipBtn.cloneNode(true));
-            document.getElementById('skip-question').addEventListener('click', handleSkip);
-        }
-
-        // Обработчик Enter в поле ввода
-        if (answerInput) {
-            answerInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    handleAnswer();
-                }
-            });
-        }
-
-        return this.openModal('question-modal');
-    }
-
-    showMessage(title, message, onClose) {
-        const modal = this.modals.get('message-modal');
-        if (!modal) return false;
-
-        // Заполняем содержимое
-        const titleElement = document.getElementById('message-title');
-        const messageElement = document.getElementById('message-text');
-        const closeBtn = document.getElementById('close-message');
-
-        if (titleElement) titleElement.textContent = title;
-        if (messageElement) messageElement.textContent = message;
-
-        // Настройка обработчика закрытия
-        if (closeBtn) {
-            closeBtn.replaceWith(closeBtn.cloneNode(true));
-            document.getElementById('close-message').addEventListener('click', () => {
-                this.closeModal('message-modal');
-                if (onClose) onClose();
-            });
-        }
-
-        return this.openModal('message-modal', { focusInput: false });
-    }
-
-    showResults(htmlContent, onClose) {
-        const modal = this.modals.get('results-modal');
-        if (!modal) return false;
-
-        // Заполняем содержимое
-        const contentElement = document.getElementById('results-content');
-        const closeBtn = document.getElementById('close-results');
-
-        if (contentElement) contentElement.innerHTML = htmlContent;
-
-        // Настройка обработчика закрытия
-        if (closeBtn) {
-            closeBtn.replaceWith(closeBtn.cloneNode(true));
-            document.getElementById('close-results').addEventListener('click', () => {
-                this.closeModal('results-modal');
-                if (onClose) onClose();
-            });
-        }
-
-        return this.openModal('results-modal', { focusInput: false });
-    }
-
-    handleKeyboard(e) {
+        
         if (!this.currentModal) return;
-
-        const modal = this.modals.get(this.currentModal);
-        if (!modal) return;
-
-        // Escape для закрытия
-        if (e.key === 'Escape' && modal.config.closeOnEscape) {
-            this.closeModal(this.currentModal);
-            e.preventDefault();
+        
+        this.currentModal.classList.remove('active');
+        
+        // Восстанавливаем прокрутку страницы
+        document.body.style.overflow = '';
+        
+        // Выполняем callback в зависимости от типа модального окна
+        if (this.currentModal === this.messageModal && this.messageCallback) {
+            this.messageCallback();
+            this.messageCallback = null;
+        } else if (this.currentModal === this.resultsModal && this.resultsCallback) {
+            this.resultsCallback();
+            this.resultsCallback = null;
         }
+        
+        this.currentModal = null;
+    }
 
-        // Enter для отправки ответа в модальном окне вопроса
-        if (e.key === 'Enter' && this.currentModal === 'question-modal') {
-            const submitBtn = document.getElementById('submit-answer');
-            if (submitBtn) {
-                submitBtn.click();
-                e.preventDefault();
-            }
+    submitAnswer() {
+        const answerInput = document.getElementById('answer-input');
+        if (!answerInput || !this.answerCallback) return;
+        
+        const answer = answerInput.value.trim(); // Разрешаем пробелы в ответе
+        this.log('Отправка ответа:', answer);
+        
+        if (answer === '') {
+            this.log('Пустой ответ, показываем предупреждение');
+            answerInput.placeholder = 'Пожалуйста, введите ответ';
+            answerInput.style.borderColor = '#e74c3c';
+            answerInput.focus();
+            return;
+        }
+        
+        this.closeCurrentModal();
+        
+        if (this.answerCallback) {
+            this.answerCallback(answer);
+            this.answerCallback = null;
         }
     }
 
-    isModalOpen(modalId) {
-        if (modalId) {
-            const modal = this.modals.get(modalId);
-            return modal ? modal.isOpen : false;
+    skipQuestion() {
+        this.log('Пропуск вопроса');
+        this.closeCurrentModal();
+        
+        if (this.answerCallback) {
+            this.answerCallback(''); // Пустой ответ означает пропуск
+            this.answerCallback = null;
         }
+    }
+
+    isOpen() {
         return this.currentModal !== null;
     }
 
@@ -275,12 +270,49 @@ export class ModalManager {
         return this.currentModal;
     }
 
-    closeAllModals() {
-        this.modals.forEach((modal, id) => {
-            if (modal.isOpen) {
-                this.closeModal(id);
+    // Утилитарные методы для разных типов сообщений
+    showSuccessMessage(message, callback = null, autoClose = true) {
+        this.showMessage(
+            'Правильно! 🎉', 
+            message, 
+            callback, 
+            { autoClose, autoCloseDelay: 1000 }
+        );
+    }
+
+    showErrorMessage(message, callback = null, autoClose = false) {
+        this.showMessage(
+            'Неправильно 😔', 
+            message, 
+            callback, 
+            { autoClose, autoCloseDelay: 1000 }
+        );
+    }
+
+    showBotMessage(title, message, callback = null) {
+        this.showMessage(
+            title, 
+            message, 
+            callback, 
+            { autoClose: true, autoCloseDelay: 1000, isBot: true }
+        );
+    }
+
+    showInfoMessage(title, message, callback = null) {
+        this.showMessage(title, message, callback, { autoClose: false });
+    }
+
+    // Отладочные методы
+    getDebugInfo() {
+        return {
+            initialized: this.initialized,
+            currentModal: this.currentModal?.id || null,
+            hasAutoCloseTimer: !!this.autoCloseTimer,
+            modalStates: {
+                question: this.questionModal?.classList.contains('active') || false,
+                message: this.messageModal?.classList.contains('active') || false,
+                results: this.resultsModal?.classList.contains('active') || false
             }
-        });
+        };
     }
 }
-
