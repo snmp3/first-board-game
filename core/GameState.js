@@ -1,105 +1,242 @@
+import { Player } from '../entities/Player.js';
+
 export class GameState {
     constructor() {
         this.players = [];
         this.currentPlayerIndex = 0;
         this.gameStarted = false;
         this.gameEnded = false;
-        this.skipTurns = new Map();
-        this.gameHistory = [];
+        this.skipTurns = new Map(); // Карта игрок -> количество пропускаемых ходов
+        this.debug = true;
+    }
+
+    log(...args) {
+        if (this.debug) {
+            console.log('[GameState]', ...args);
+        }
+    }
+
+    error(...args) {
+        console.error('[GameState]', ...args);
     }
 
     addPlayer(name, isBot = false, difficulty = 'medium') {
-        const player = {
-            id: this.players.length,
-            name,
-            position: 0,
-            isBot,
-            difficulty,
-            color: this.getPlayerColor(this.players.length),
-            questionsAnswered: 0,
-            correctAnswers: 0
-        };
+        const id = this.players.length;
+        const player = new Player(id, name, isBot, difficulty);
         this.players.push(player);
+        
+        // Инициализируем пропуск ходов для нового игрока
+        this.skipTurns.set(id, 0);
+        
+        this.log(`Игрок добавлен: ${name} (ID: ${id}, бот: ${isBot})`);
         return player;
     }
 
-    getPlayerColor(index) {
-        const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A'];
-        return colors[index % colors.length];
+    removePlayer(playerId) {
+        const playerIndex = this.players.findIndex(p => p.id === playerId);
+        if (playerIndex !== -1) {
+            const removedPlayer = this.players.splice(playerIndex, 1)[0];
+            this.skipTurns.delete(playerId);
+            
+            // Корректируем текущий индекс если нужно
+            if (this.currentPlayerIndex >= this.players.length) {
+                this.currentPlayerIndex = 0;
+            }
+            
+            this.log(`Игрок удален: ${removedPlayer.name}`);
+            return removedPlayer;
+        }
+        return null;
     }
 
     getCurrentPlayer() {
-        return this.players[this.currentPlayerIndex];
-    }
-
-    nextPlayer() {
         if (this.players.length === 0) return null;
-        
-        do {
-            this.currentPlayerIndex = (this.currentPlayerIndex + 1) % this.players.length;
-        } while (this.shouldSkipPlayer(this.getCurrentPlayer()));
-        
-        this.decrementSkipTurns();
-        return this.getCurrentPlayer();
-    }
-
-    shouldSkipPlayer(player) {
-        return this.skipTurns.has(player.id) && this.skipTurns.get(player.id) > 0;
+        return this.players[this.currentPlayerIndex];
     }
 
     setSkipTurns(playerId, turns) {
         this.skipTurns.set(playerId, turns);
+        this.log(`Игрок ${playerId} пропускает ${turns} ход(ов)`);
+        
+        // Обновляем свойство skipTurns в объекте игрока для отображения в UI
+        const player = this.players.find(p => p.id === playerId);
+        if (player) {
+            player.skipTurns = turns;
+        }
     }
 
-    decrementSkipTurns() {
-        for (let [playerId, turns] of this.skipTurns.entries()) {
-            if (turns > 0) {
-                this.skipTurns.set(playerId, turns - 1);
+    getSkipTurns(playerId) {
+        return this.skipTurns.get(playerId) || 0;
+    }
+
+    // ИСПРАВЛЕННАЯ логика смены игрока с корректным пропуском ходов
+    nextPlayer() {
+        if (this.players.length === 0) return null;
+        
+        // Сначала обрабатываем текущего игрока
+        const currentPlayer = this.getCurrentPlayer();
+        if (currentPlayer) {
+            const skipTurns = this.getSkipTurns(currentPlayer.id);
+            if (skipTurns > 0) {
+                // Текущий игрок пропускает ход
+                this.log(`${currentPlayer.name} пропускает ход (осталось: ${skipTurns - 1})`);
+                this.setSkipTurns(currentPlayer.id, skipTurns - 1);
+                // НЕ меняем currentPlayerIndex - остаемся на том же игроке, но он пропускает ход
+                return currentPlayer;
             }
         }
+        
+        // Если текущий игрок не пропускает ход, переходим к следующему
+        let attempts = 0;
+        const maxAttempts = this.players.length * 2; // Защита от бесконечного цикла
+        
+        do {
+            this.currentPlayerIndex = (this.currentPlayerIndex + 1) % this.players.length;
+            attempts++;
+            
+            if (attempts > maxAttempts) {
+                this.error('Превышено количество попыток смены игрока');
+                break;
+            }
+        } while (this.shouldSkipPlayer(this.getCurrentPlayer()));
+        
+        const newCurrentPlayer = this.getCurrentPlayer();
+        this.log(`Переход хода к: ${newCurrentPlayer?.name} (индекс: ${this.currentPlayerIndex})`);
+        
+        return newCurrentPlayer;
+    }
+
+    shouldSkipPlayer(player) {
+        if (!player) return false;
+        const skipTurns = this.getSkipTurns(player.id);
+        return skipTurns > 0;
+    }
+
+    // Метод для принудительного перехода к следующему игроку (для случаев когда текущий пропускает)
+    forceNextPlayer() {
+        if (this.players.length === 0) return null;
+        
+        this.currentPlayerIndex = (this.currentPlayerIndex + 1) % this.players.length;
+        
+        // Проверяем, не нужно ли пропустить следующего игрока
+        let attempts = 0;
+        const maxAttempts = this.players.length;
+        
+        while (this.shouldSkipPlayer(this.getCurrentPlayer()) && attempts < maxAttempts) {
+            const player = this.getCurrentPlayer();
+            const skipTurns = this.getSkipTurns(player.id);
+            this.log(`${player.name} пропускает ход (осталось: ${skipTurns - 1})`);
+            this.setSkipTurns(player.id, skipTurns - 1);
+            
+            this.currentPlayerIndex = (this.currentPlayerIndex + 1) % this.players.length;
+            attempts++;
+        }
+        
+        const newCurrentPlayer = this.getCurrentPlayer();
+        this.log(`Принудительный переход хода к: ${newCurrentPlayer?.name}`);
+        
+        return newCurrentPlayer;
     }
 
     movePlayer(playerId, steps) {
         const player = this.players.find(p => p.id === playerId);
-        if (player) {
-            const oldPosition = player.position;
-            player.position = Math.min(player.position + steps, 119);
-            
-            this.gameHistory.push({
-                playerId,
-                action: 'move',
-                from: oldPosition,
-                to: player.position,
-                timestamp: Date.now()
-            });
-            
-            return player.position;
+        if (!player) {
+            this.error(`Игрок с ID ${playerId} не найден`);
+            return -1;
         }
-        return -1;
+
+        const oldPosition = player.position;
+        player.position = Math.min(player.position + steps, 119); // 119 = финиш (позиция 120)
+        
+        this.log(`${player.name}: ${oldPosition + 1} → ${player.position + 1} (двигался на ${steps})`);
+        
+        return player.position;
+    }
+
+    // Метод для обновления позиции игрока после прыжка по лестнице/змее
+    setPlayerPosition(playerId, position) {
+        const player = this.players.find(p => p.id === playerId);
+        if (!player) {
+            this.error(`Игрок с ID ${playerId} не найден`);
+            return -1;
+        }
+
+        const oldPosition = player.position;
+        player.position = Math.max(0, Math.min(position, 119));
+        
+        this.log(`${player.name}: позиция изменена ${oldPosition + 1} → ${player.position + 1}`);
+        
+        return player.position;
     }
 
     checkWinner() {
         return this.players.find(player => player.position >= 119);
     }
 
+    getStatistics() {
+        return this.players
+            .slice()
+            .sort((a, b) => {
+                // Сортируем по позиции (убывание), затем по точности
+                if (b.position !== a.position) {
+                    return b.position - a.position;
+                }
+                return b.getAccuracy() - a.getAccuracy();
+            })
+            .map(player => ({
+                name: player.name,
+                position: player.position + 1,
+                accuracy: player.getAccuracy(),
+                correctAnswers: player.correctAnswers,
+                questionsAnswered: player.questionsAnswered,
+                isBot: player.isBot
+            }));
+    }
+
     reset() {
-        this.players = [];
+        this.players.forEach(player => player.reset());
         this.currentPlayerIndex = 0;
         this.gameStarted = false;
         this.gameEnded = false;
         this.skipTurns.clear();
-        this.gameHistory = [];
+        
+        this.log('GameState сброшен');
     }
 
-    getStatistics() {
-        return this.players.map(player => ({
-            name: player.name,
-            position: player.position,
-            questionsAnswered: player.questionsAnswered,
-            correctAnswers: player.correctAnswers,
-            accuracy: player.questionsAnswered > 0 ? 
-                Math.round((player.correctAnswers / player.questionsAnswered) * 100) : 0
-        }));
+    // Полная очистка игроков
+    clearPlayers() {
+        this.players = [];
+        this.currentPlayerIndex = 0;
+        this.skipTurns.clear();
+        this.log('Все игроки удалены');
+    }
+
+    // Получение информации о пропусках для всех игроков
+    getAllSkipTurns() {
+        const result = {};
+        this.skipTurns.forEach((turns, playerId) => {
+            const player = this.players.find(p => p.id === playerId);
+            if (player) {
+                result[player.name] = turns;
+            }
+        });
+        return result;
+    }
+
+    // Отладочная информация
+    getDebugInfo() {
+        return {
+            playersCount: this.players.length,
+            currentPlayerIndex: this.currentPlayerIndex,
+            currentPlayer: this.getCurrentPlayer()?.name,
+            gameStarted: this.gameStarted,
+            gameEnded: this.gameEnded,
+            skipTurns: this.getAllSkipTurns(),
+            playerPositions: this.players.map(p => ({
+                name: p.name,
+                position: p.position + 1,
+                skipTurns: this.getSkipTurns(p.id)
+            }))
+        };
     }
 }
-
