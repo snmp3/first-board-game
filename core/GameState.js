@@ -6,7 +6,7 @@ export class GameState {
         this.currentPlayerIndex = 0;
         this.gameStarted = false;
         this.gameEnded = false;
-        this.skipTurns = new Map(); // Карта игрок -> количество пропускаемых ходов
+        this.skipTurns = new Map();
         this.debug = true;
     }
 
@@ -25,7 +25,6 @@ export class GameState {
         const player = new Player(id, name, isBot, difficulty);
         this.players.push(player);
         
-        // Инициализируем пропуск ходов для нового игрока
         this.skipTurns.set(id, 0);
         
         this.log(`Игрок добавлен: ${name} (ID: ${id}, бот: ${isBot})`);
@@ -38,7 +37,6 @@ export class GameState {
             const removedPlayer = this.players.splice(playerIndex, 1)[0];
             this.skipTurns.delete(playerId);
             
-            // Корректируем текущий индекс если нужно
             if (this.currentPlayerIndex >= this.players.length) {
                 this.currentPlayerIndex = 0;
             }
@@ -58,7 +56,6 @@ export class GameState {
         this.skipTurns.set(playerId, turns);
         this.log(`Игрок ${playerId} пропускает ${turns} ход(ов)`);
         
-        // Обновляем свойство skipTurns в объекте игрока для отображения в UI
         const player = this.players.find(p => p.id === playerId);
         if (player) {
             player.skipTurns = turns;
@@ -69,26 +66,21 @@ export class GameState {
         return this.skipTurns.get(playerId) || 0;
     }
 
-    // ИСПРАВЛЕННАЯ логика смены игрока с корректным пропуском ходов
     nextPlayer() {
         if (this.players.length === 0) return null;
         
-        // Сначала обрабатываем текущего игрока
         const currentPlayer = this.getCurrentPlayer();
         if (currentPlayer) {
             const skipTurns = this.getSkipTurns(currentPlayer.id);
             if (skipTurns > 0) {
-                // Текущий игрок пропускает ход
                 this.log(`${currentPlayer.name} пропускает ход (осталось: ${skipTurns - 1})`);
                 this.setSkipTurns(currentPlayer.id, skipTurns - 1);
-                // НЕ меняем currentPlayerIndex - остаемся на том же игроке, но он пропускает ход
                 return currentPlayer;
             }
         }
         
-        // Если текущий игрок не пропускает ход, переходим к следующему
         let attempts = 0;
-        const maxAttempts = this.players.length * 2; // Защита от бесконечного цикла
+        const maxAttempts = this.players.length * 2;
         
         do {
             this.currentPlayerIndex = (this.currentPlayerIndex + 1) % this.players.length;
@@ -112,13 +104,11 @@ export class GameState {
         return skipTurns > 0;
     }
 
-    // Метод для принудительного перехода к следующему игроку (для случаев когда текущий пропускает)
     forceNextPlayer() {
         if (this.players.length === 0) return null;
         
         this.currentPlayerIndex = (this.currentPlayerIndex + 1) % this.players.length;
         
-        // Проверяем, не нужно ли пропустить следующего игрока
         let attempts = 0;
         const maxAttempts = this.players.length;
         
@@ -146,14 +136,13 @@ export class GameState {
         }
 
         const oldPosition = player.position;
-        player.position = Math.min(player.position + steps, 119); // 119 = финиш (позиция 120)
+        player.position = Math.min(player.position + steps, 119);
         
         this.log(`${player.name}: ${oldPosition + 1} → ${player.position + 1} (двигался на ${steps})`);
         
         return player.position;
     }
 
-    // Метод для обновления позиции игрока после прыжка по лестнице/змее
     setPlayerPosition(playerId, position) {
         const player = this.players.find(p => p.id === playerId);
         if (!player) {
@@ -177,7 +166,6 @@ export class GameState {
         return this.players
             .slice()
             .sort((a, b) => {
-                // Сортируем по позиции (убывание), затем по точности
                 if (b.position !== a.position) {
                     return b.position - a.position;
                 }
@@ -203,7 +191,6 @@ export class GameState {
         this.log('GameState сброшен');
     }
 
-    // Полная очистка игроков
     clearPlayers() {
         this.players = [];
         this.currentPlayerIndex = 0;
@@ -211,7 +198,6 @@ export class GameState {
         this.log('Все игроки удалены');
     }
 
-    // Получение информации о пропусках для всех игроков
     getAllSkipTurns() {
         const result = {};
         this.skipTurns.forEach((turns, playerId) => {
@@ -223,7 +209,6 @@ export class GameState {
         return result;
     }
 
-    // Отладочная информация
     getDebugInfo() {
         return {
             playersCount: this.players.length,
