@@ -30,7 +30,7 @@
                     <h3>Активные темы вопросов</h3>
                     <div class="themes-grid">
                         <label class="theme-checkbox">
-                            <input type="checkbox" id="math" checked>
+                            <input type="checkbox" id="mathematics" checked>
                             <span class="checkmark"></span>
                             <span class="theme-name">🧮 Математика</span>
                         </label>
@@ -82,6 +82,7 @@
                             <li>Вводите ответ текстом в поле ввода</li>
                             <li>При правильном ответе игра продолжается</li>
                             <li>При неправильном ответе пропускаете следующий ход</li>
+                            <li><strong>Пустые ответы считаются неправильными!</strong></li>
                         </ul>
                     </div>
 
@@ -91,6 +92,15 @@
                             <li><span class="green-cell">Зелёные клетки</span> - прыжок вперёд</li>
                             <li><span class="red-cell">Красные клетки</span> - прыжок назад</li>
                             <li>На этих клетках вопросы не задаются</li>
+                        </ul>
+                    </div>
+
+                    <div class="rule-section">
+                        <h3>🤖 Сложность ботов</h3>
+                        <ul>
+                            <li><strong>Легкий:</strong> 30% шанс правильного ответа</li>
+                            <li><strong>Средний:</strong> 60% шанс правильного ответа</li>
+                            <li><strong>Сложный:</strong> 85% шанс правильного ответа</li>
                         </ul>
                     </div>
 
@@ -114,6 +124,35 @@
                     <button class="btn btn--primary player-count-btn" data-players="4">4 игрока</button>
                 </div>
                 <button class="btn btn--outline" id="back-from-setup-btn">← Назад</button>
+            </div>
+        </div>
+
+        <!-- Выбор сложности ботов -->
+        <div id="bot-difficulty-screen" class="screen">
+            <div class="setup-container">
+                <h2>🤖 Выберите сложность ботов</h2>
+                <p class="game-subtitle">Это влияет на вероятность правильных ответов ботов</p>
+                <div class="difficulty-buttons">
+                    <button class="btn btn--secondary btn--lg difficulty-btn" data-difficulty="easy">
+                        <div class="difficulty-content">
+                            <div class="difficulty-title">😊 Легкий</div>
+                            <div class="difficulty-description">30% правильных ответов</div>
+                        </div>
+                    </button>
+                    <button class="btn btn--primary btn--lg difficulty-btn" data-difficulty="medium">
+                        <div class="difficulty-content">
+                            <div class="difficulty-title">😐 Средний</div>
+                            <div class="difficulty-description">60% правильных ответов</div>
+                        </div>
+                    </button>
+                    <button class="btn btn--secondary btn--lg difficulty-btn" data-difficulty="hard">
+                        <div class="difficulty-content">
+                            <div class="difficulty-title">😤 Сложный</div>
+                            <div class="difficulty-description">85% правильных ответов</div>
+                        </div>
+                    </button>
+                </div>
+                <button class="btn btn--outline" id="back-from-difficulty-btn">← Назад</button>
             </div>
         </div>
 
@@ -170,7 +209,7 @@
                 </div>
                 <div class="question-text"></div>
                 <div class="question-input">
-                    <input type="text" class="form-control" id="answer-input" placeholder="Введите ваш ответ...">
+                    <input type="text" class="form-control" id="answer-input" placeholder="Введите ваш ответ..." autocomplete="off">
                 </div>
                 <div class="question-actions">
                     <button class="btn btn--primary" id="submit-answer-btn">✓ Ответить</button>

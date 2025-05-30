@@ -7,97 +7,120 @@ class AdventureGame {
             cols: 10,
             cellSize: 60,
             cellPadding: 3,
-            playerColors: ["#ff4444", "#4444ff", "#44ff44", "#ffaa00"]
+            playerColors: ["#ff4444", "#4444ff", "#44ff44", "#ffff44"]
         };
-        this.specialCells = {
-            15: {type: "ladder", target: 35},
-            42: {type: "snake", target: 22},
-            78: {type: "ladder", target: 94},
-            115: {type: "snake", target: 85}
+        this.jumpCells = {
+            15: {type: "up", target: 35},
+            42: {type: "down", target: 22},
+            55: {type: "down", target: 25},
+            78: {type: "up", target: 94},
+            87: {type: "down", target: 67},
+            115: {type: "down", target: 85}
         };
         this.activeThemes = {
-            math: true,
+            mathematics: true,
             geography: true,
             history: true,
             biology: true,
             riddles: true
         };
+        this.botDifficulty = {
+            easy: {
+                name: "Легкий",
+                successRate: 0.3,
+                thinkTime: [2000, 3000]
+            },
+            medium: {
+                name: "Средний",
+                successRate: 0.6,
+                thinkTime: [1500, 2500]
+            },
+            hard: {
+                name: "Сложный",
+                successRate: 0.85,
+                thinkTime: [1000, 2000]
+            }
+        };
+        this.selectedDifficulty = "medium"; // По умолчанию средняя сложность
         this.currentScreen = 'main-menu';
         this.gameState = null;
         this.canvas = null;
         this.ctx = null;
         this.currentQuestion = null;
+        this.playerCount = 0;
         
         this.init();
     }
 
     async init() {
-        this.loadQuestions();
+        await this.loadQuestions();
         this.setupEventListeners();
+        this.loadSettings();
         this.showScreen('main-menu');
     }
 
-    loadQuestions() {
+    async loadQuestions() {
+        // Загружаем вопросы
         this.questions = {
-            math: [
+            mathematics: [
                 {question: "Сколько будет 7 + 8?", answer: "15"},
-                {question: "Сколько сторон у треугольника?", answer: "3"},
-                {question: "Сколько минут в часе?", answer: "60"},
-                {question: "Сколько будет 9 × 6?", answer: "54"},
-                {question: "Сколько сантиметров в метре?", answer: "100"},
                 {question: "Сколько будет 12 - 5?", answer: "7"},
-                {question: "Сколько углов у квадрата?", answer: "4"},
+                {question: "Сколько будет 6 × 4?", answer: "24"},
+                {question: "Сколько углов у треугольника?", answer: "3"},
+                {question: "Сколько сторон у квадрата?", answer: "4"},
                 {question: "Сколько месяцев в году?", answer: "12"},
                 {question: "Сколько дней в неделе?", answer: "7"},
+                {question: "Сколько часов в сутках?", answer: "24"},
+                {question: "Сколько сантиметров в метре?", answer: "100"},
                 {question: "Сколько граммов в килограмме?", answer: "1000"}
             ],
             geography: [
-                {question: "Столица России?", answer: "Москва"},
-                {question: "Самый большой океан?", answer: "Тихий"},
-                {question: "На каком материке находится Египет?", answer: "Африка"},
-                {question: "Столица Франции?", answer: "Париж"},
-                {question: "Самая длинная река в мире?", answer: "Нил"},
+                {question: "Какая столица России?", answer: "Москва"},
+                {question: "Какая столица Франции?", answer: "Париж"},
                 {question: "Сколько материков на Земле?", answer: "6"},
                 {question: "Самый большой материк?", answer: "Евразия"},
+                {question: "Самый большой океан?", answer: "Тихий"},
+                {question: "Самая длинная река в мире?", answer: "Нил"},
                 {question: "Самая высокая гора в мире?", answer: "Эверест"},
                 {question: "Самое глубокое озеро в мире?", answer: "Байкал"},
+                {question: "Самая жаркая пустыня?", answer: "Сахара"},
                 {question: "Северная столица России?", answer: "Петербург"}
             ],
             history: [
-                {question: "В каком году началась Великая Отечественная война?", answer: "1941"},
-                {question: "Кто написал 'Война и мир'?", answer: "Толстой"},
-                {question: "Столица Древней Руси?", answer: "Киев"},
-                {question: "В каком веке жил Петр I?", answer: "17"},
-                {question: "Кто открыл Америку?", answer: "Колумб"},
                 {question: "Кто крестил Русь?", answer: "Владимир"},
-                {question: "Первый русский царь?", answer: "Иван"},
+                {question: "Первый русский царь?", answer: "Иван Грозный"},
+                {question: "Кто основал Москву?", answer: "Юрий Долгорукий"},
+                {question: "Кто такой Суворов?", answer: "полководец"},
                 {question: "В каком году была Куликовская битва?", answer: "1380"},
+                {question: "В каком веке жил Пушкин?", answer: "19"},
                 {question: "В каком году человек полетел в космос?", answer: "1961"},
-                {question: "Кто изобрел радио?", answer: "Попов"}
+                {question: "Кто изобрел радио?", answer: "Попов"},
+                {question: "Где находится Эрмитаж?", answer: "Петербург"},
+                {question: "Где стоит памятник Минину и Пожарскому?", answer: "Москва"}
             ],
             biology: [
-                {question: "Сколько ног у паука?", answer: "8"},
-                {question: "Самое большое животное в мире?", answer: "кит"},
-                {question: "Что вырабатывают растения на свету?", answer: "кислород"},
-                {question: "Сколько камер в сердце человека?", answer: "4"},
-                {question: "Царь зверей?", answer: "лев"},
+                {question: "Самое большое животное на Земле?", answer: "кит"},
                 {question: "Самое быстрое животное?", answer: "гепард"},
+                {question: "Царь зверей?", answer: "лев"},
                 {question: "Где живут пингвины?", answer: "Антарктида"},
+                {question: "Сколько ног у паука?", answer: "8"},
                 {question: "Из чего растения получают энергию?", answer: "солнце"},
+                {question: "Какой газ выделяют растения?", answer: "кислород"},
                 {question: "Сколько пальцев на руке?", answer: "5"},
-                {question: "Главный орган кровообращения?", answer: "сердце"}
+                {question: "Главный орган кровообращения?", answer: "сердце"},
+                {question: "Сколько времен года?", answer: "4"}
             ],
             riddles: [
-                {question: "Зимой и летом одним цветом", answer: "ёлка"},
-                {question: "Висит груша - нельзя скушать", answer: "лампочка"},
-                {question: "Без рук, без ног, а рисовать умеет", answer: "мороз"},
-                {question: "Течет, течет - не вытечет", answer: "река"},
-                {question: "Сто одежек и все без застежек", answer: "капуста"},
+                {question: "Рыжая плутовка, хитрая и ловкая", answer: "лиса"},
+                {question: "Косолапый и большой, спит в берлоге он зимой", answer: "медведь"},
                 {question: "Два конца, два кольца, посередине гвоздик", answer: "ножницы"},
                 {question: "Не лает, не кусает, а в дом не пускает", answer: "замок"},
+                {question: "Сидит дед во сто шуб одет, кто его раздевает, тот слезы проливает", answer: "лук"},
                 {question: "Красна девица сидит в темнице, а коса на улице", answer: "морковь"},
                 {question: "Круглое, румяное, я расту на ветке", answer: "яблоко"},
-                {question: "Шумит он в поле и в саду, а в дом не попадет", answer: "ветер"}
+                {question: "Шумит он в поле и в саду, а в дом не попадет", answer: "ветер"},
+                {question: "Без крыльев летят, без ног бегут, без паруса плывут", answer: "облака"},
+                {question: "Двенадцать братьев друг за другом бродят, друг друга не обходят", answer: "месяцы"}
             ]
         };
     }
@@ -112,14 +135,32 @@ class AdventureGame {
         document.getElementById('save-settings-btn').addEventListener('click', () => this.saveSettings());
         document.getElementById('back-to-menu-btn').addEventListener('click', () => this.showScreen('main-menu'));
 
-        // Правила - исправлен обработчик
+        // Правила
         document.getElementById('back-from-rules-btn').addEventListener('click', () => this.showScreen('main-menu'));
 
         // Выбор игроков
         document.querySelectorAll('.player-count-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => this.startGame(parseInt(e.target.dataset.players)));
+            btn.addEventListener('click', (e) => {
+                const playerCount = parseInt(e.target.dataset.players);
+                this.playerCount = playerCount;
+                
+                if (playerCount === 1) {
+                    this.showScreen('bot-difficulty-screen');
+                } else {
+                    this.startGame(playerCount);
+                }
+            });
         });
         document.getElementById('back-from-setup-btn').addEventListener('click', () => this.showScreen('main-menu'));
+
+        // Выбор сложности ботов
+        document.querySelectorAll('.difficulty-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                this.selectedDifficulty = e.target.closest('.difficulty-btn').dataset.difficulty;
+                this.startGame(this.playerCount);
+            });
+        });
+        document.getElementById('back-from-difficulty-btn').addEventListener('click', () => this.showScreen('player-setup-screen'));
 
         // Игра
         document.getElementById('roll-dice-btn').addEventListener('click', () => this.rollDice());
@@ -172,6 +213,10 @@ class AdventureGame {
         }
 
         this.showScreen('main-menu');
+    }
+
+    loadSettings() {
+        // Настройки по умолчанию уже установлены в конструкторе
     }
 
     startGame(playerCount) {
@@ -236,8 +281,8 @@ class AdventureGame {
                 id: i,
                 x: coords.x,
                 y: coords.y,
-                isJump: this.specialCells.hasOwnProperty(i),
-                jumpInfo: this.specialCells[i] || null
+                isJump: this.jumpCells.hasOwnProperty(i),
+                jumpInfo: this.jumpCells[i] || null
             });
         }
         
@@ -283,8 +328,8 @@ class AdventureGame {
             
             // Определяем цвет клетки
             let cellColor = '#f0f0f0';
-            if (this.specialCells[i]) {
-                cellColor = this.specialCells[i].type === 'ladder' ? '#4CAF50' : '#f44336';
+            if (this.jumpCells[i]) {
+                cellColor = this.jumpCells[i].type === 'up' ? '#4CAF50' : '#f44336';
             }
             
             // Рисуем клетку
@@ -298,16 +343,16 @@ class AdventureGame {
             
             // Рисуем номер клетки
             this.ctx.fillStyle = '#333';
-            this.ctx.font = '10px Arial';
+            this.ctx.font = '12px Arial';
             this.ctx.textAlign = 'center';
-            this.ctx.fillText(i.toString(), x + this.gameConfig.cellSize / 2, y + 12);
+            this.ctx.fillText(i.toString(), x + this.gameConfig.cellSize / 2, y + 15);
             
             // Рисуем стрелки для прыжков
-            if (this.specialCells[i]) {
+            if (this.jumpCells[i]) {
                 this.ctx.fillStyle = 'white';
-                this.ctx.font = 'bold 16px Arial';
-                const arrow = this.specialCells[i].type === 'ladder' ? '↑' : '↓';
-                this.ctx.fillText(arrow, x + this.gameConfig.cellSize / 2, y + this.gameConfig.cellSize / 2 + 5);
+                this.ctx.font = 'bold 20px Arial';
+                const arrow = this.jumpCells[i].type === 'up' ? '↑' : '↓';
+                this.ctx.fillText(arrow, x + this.gameConfig.cellSize / 2, y + this.gameConfig.cellSize / 2 + 7);
             }
         }
         
@@ -323,16 +368,16 @@ class AdventureGame {
                 const baseY = coords.y * (this.gameConfig.cellSize + this.gameConfig.cellPadding);
                 
                 // Смещение для нескольких игроков на одной клетке
-                const offsetX = (index % 2) * 12 + 8;
-                const offsetY = Math.floor(index / 2) * 12 + 20;
+                const offsetX = (index % 2) * 15 + 10;
+                const offsetY = Math.floor(index / 2) * 15 + 25;
                 
                 this.ctx.fillStyle = player.color;
                 this.ctx.beginPath();
-                this.ctx.arc(baseX + offsetX, baseY + offsetY, 6, 0, 2 * Math.PI);
+                this.ctx.arc(baseX + offsetX, baseY + offsetY, 8, 0, 2 * Math.PI);
                 this.ctx.fill();
                 
                 this.ctx.strokeStyle = '#333';
-                this.ctx.lineWidth = 1;
+                this.ctx.lineWidth = 2;
                 this.ctx.stroke();
             }
         });
@@ -361,18 +406,16 @@ class AdventureGame {
             
             playerDiv.innerHTML = `
                 <div class="player-color" style="background-color: ${player.color}"></div>
-                <div>
-                    <div class="player-name">${player.name}</div>
-                    <div class="player-position">Клетка: ${player.position}</div>
-                </div>
+                <div class="player-name">${player.name}</div>
+                <div class="player-position">Клетка: ${player.position}</div>
             `;
             
             playersList.appendChild(playerDiv);
         });
         
-        // Включаем/выключаем кнопку кубика
+        // ИСПРАВЛЕНО: включаем кнопку кубика
         const rollBtn = document.getElementById('roll-dice-btn');
-        rollBtn.disabled = !this.gameState.isGameActive;
+        rollBtn.disabled = false;
     }
 
     rollDice() {
@@ -388,16 +431,16 @@ class AdventureGame {
             return;
         }
         
+        // Отключаем кнопку на время хода
+        document.getElementById('roll-dice-btn').disabled = true;
+        
         const diceResult = Math.floor(Math.random() * 6) + 1;
         document.querySelector('.dice-result').textContent = diceResult;
-        
-        // Отключаем кнопку кубика на время хода
-        document.getElementById('roll-dice-btn').disabled = true;
         
         // Перемещаем игрока
         setTimeout(() => {
             this.movePlayer(currentPlayer, diceResult);
-        }, 500);
+        }, 800);
     }
 
     movePlayer(player, steps) {
@@ -416,9 +459,9 @@ class AdventureGame {
         }
         
         // Проверяем прыжки
-        if (this.specialCells[newPosition]) {
+        if (this.jumpCells[newPosition]) {
             setTimeout(() => {
-                player.position = this.specialCells[newPosition].target;
+                player.position = this.jumpCells[newPosition].target;
                 this.drawBoard();
                 this.updateUI();
                 
@@ -426,7 +469,7 @@ class AdventureGame {
                 if (player.position >= 120) {
                     this.endGame(player);
                 } else {
-                    // Включаем кнопку кубика обратно
+                    // Включаем кнопку обратно
                     document.getElementById('roll-dice-btn').disabled = false;
                     this.nextPlayer();
                 }
@@ -441,20 +484,31 @@ class AdventureGame {
 
     askQuestion(player) {
         if (player.isBot) {
-            // Бот отвечает автоматически
-            const isCorrect = Math.random() > 0.3; // 70% вероятность правильного ответа
-            if (!isCorrect) {
-                this.gameState.skipNextTurn[player.id] = true;
-            }
-            // Включаем кнопку кубика обратно
-            document.getElementById('roll-dice-btn').disabled = false;
-            this.nextPlayer();
+            // Получаем настройки бота в зависимости от выбранной сложности
+            const botSettings = this.botDifficulty[this.selectedDifficulty];
+            
+            // Расчет случайного времени "размышления" бота
+            const minTime = botSettings.thinkTime[0];
+            const maxTime = botSettings.thinkTime[1];
+            const thinkTime = Math.floor(Math.random() * (maxTime - minTime + 1)) + minTime;
+            
+            // Определяем успешность ответа бота на основе его шанса
+            const isCorrect = Math.random() < botSettings.successRate;
+            
+            // Симулируем время обдумывания для бота
+            setTimeout(() => {
+                if (!isCorrect) {
+                    this.gameState.skipNextTurn[player.id] = true;
+                }
+                document.getElementById('roll-dice-btn').disabled = false;
+                this.nextPlayer();
+            }, thinkTime);
+            
             return;
         }
         
         const question = this.getRandomQuestion();
         if (!question) {
-            // Включаем кнопку кубика обратно
             document.getElementById('roll-dice-btn').disabled = false;
             this.nextPlayer();
             return;
@@ -493,10 +547,10 @@ class AdventureGame {
 
     getThemeName(themeKey) {
         const themeNames = {
-            math: '🧮 Математика',
+            mathematics: '🧮 Математика',
             geography: '🌍 География',
             history: '📚 История',
-            biology: '🌿 Биология',
+            biology: '🍃 Биология',
             riddles: '💡 Загадки'
         };
         return themeNames[themeKey] || themeKey;
@@ -505,13 +559,16 @@ class AdventureGame {
     submitAnswer() {
         if (!this.currentQuestion) return;
         
-        const userAnswer = document.getElementById('answer-input').value.trim().toLowerCase();
-        const correctAnswer = this.currentQuestion.answer.toLowerCase();
+        const userAnswer = document.getElementById('answer-input').value;
+        const correctAnswer = this.currentQuestion.answer;
         
-        // Более гибкая проверка ответов
-        const isCorrect = userAnswer === correctAnswer || 
-            userAnswer.includes(correctAnswer) || 
-            correctAnswer.includes(userAnswer);
+        // ИСПРАВЛЕНО: пустые ответы считаются неправильными
+        // Проверяем, что ответ не пустой и не состоит только из пробелов
+        const isEmptyAnswer = userAnswer.trim() === '';
+        
+        // Сравниваем нормализованные ответы (приведенные к нижнему регистру и без лишних пробелов)
+        const isCorrect = !isEmptyAnswer && 
+                          userAnswer.trim().toLowerCase() === correctAnswer.trim().toLowerCase();
         
         // Скрываем модальное окно с вопросом
         document.getElementById('question-modal').classList.remove('active');
@@ -548,7 +605,6 @@ class AdventureGame {
 
     continueGame() {
         document.getElementById('result-modal').classList.remove('active');
-        // Включаем кнопку кубика обратно
         document.getElementById('roll-dice-btn').disabled = false;
         this.nextPlayer();
     }
@@ -573,16 +629,11 @@ class AdventureGame {
         document.querySelector('.winner-color').style.backgroundColor = winner.color;
         document.querySelector('.winner-text').textContent = `${winner.name} победил!`;
         document.getElementById('victory-modal').classList.add('active');
-        
-        // Включаем кнопку кубика обратно
-        document.getElementById('roll-dice-btn').disabled = false;
     }
 
     exitGame() {
         if (confirm('Вы уверены, что хотите выйти из игры?')) {
             this.showScreen('main-menu');
-            // Сбрасываем состояние игры
-            this.gameState = null;
         }
     }
 }
