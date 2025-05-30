@@ -19,9 +19,9 @@ class AdventureGame {
         };
         this.activeThemes = {
             mathematics: true,
-            geography: true,
-            history: true,
-            biology: true,
+            geography: false,
+            history: false,
+            biology: false,
             riddles: true
         };
         this.botDifficulty = {
