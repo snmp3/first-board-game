@@ -3,250 +3,464 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ходилка-приключение</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Ходилка-приключение - Модульная версия</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .screen {
+            display: none;
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            margin-bottom: 20px;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        h1, h2 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #2c3e50;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .btn:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .players-setup {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .player-form {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #e9ecef;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .input-group input, .input-group select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #dee2e6;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .themes-selection {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .theme-checkbox {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .theme-checkbox input {
+            margin-right: 10px;
+            transform: scale(1.2);
+        }
+
+        .players-list {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .player-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            margin-bottom: 8px;
+            background: white;
+            border-radius: 5px;
+            border-left: 4px solid #3498db;
+        }
+
+        .game-area {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 20px;
+        }
+
+        .game-canvas {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        #game-board {
+            border: 2px solid #2c3e50;
+            border-radius: 10px;
+            max-width: 100%;
+        }
+
+        .game-controls {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            height: fit-content;
+        }
+
+        .control-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            border-left: 4px solid #3498db;
+        }
+
+        .control-section h4 {
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+
+        #current-player {
+            font-size: 18px;
+            font-weight: bold;
+            text-align: center;
+            padding: 10px;
+            background: white;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+
+        #dice-result {
+            font-size: 36px;
+            font-weight: bold;
+            text-align: center;
+            color: #e74c3c;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 10px 0;
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+        }
+
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+            position: relative;
+            animation: modalAppear 0.3s ease;
+        }
+
+        @keyframes modalAppear {
+            from {
+                opacity: 0;
+                transform: scale(0.8) translateY(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        .modal-content h3 {
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+
+        .modal-content input {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        .loading-indicator {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        .loading-indicator.active {
+            display: block;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border: 1px solid #f5c6cb;
+        }
+
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border: 1px solid #c3e6cb;
+        }
+
+        @media (max-width: 768px) {
+            .players-setup {
+                grid-template-columns: 1fr;
+            }
+            
+            .game-area {
+                grid-template-columns: 1fr;
+            }
+            
+            .container {
+                padding: 10px;
+            }
+            
+            #game-board {
+                width: 100%;
+                height: auto;
+            }
+        }
+    </style>
 </head>
 <body>
     <div class="container">
+        <div class="loading-indicator" id="loading">
+            <div class="spinner"></div>
+            Загрузка модулей игры...
+        </div>
+
+        <div class="error-message" id="error-display" style="display: none;">
+            <h3>Ошибка загрузки</h3>
+            <p>Убедитесь, что запускаете игру через веб-сервер (не file://)</p>
+        </div>
+
         <!-- Главное меню -->
-        <div id="main-menu" class="screen active">
-            <div class="menu-container">
-                <h1 class="game-title">🎲 Ходилка-приключение</h1>
-                <p class="game-subtitle">Увлекательная игра с вопросами</p>
-                <div class="menu-buttons">
-                    <button class="btn btn--primary btn--lg" id="new-game-btn">🎮 Новая игра</button>
-                    <button class="btn btn--secondary btn--lg" id="settings-btn">⚙️ Настройки</button>
-                    <button class="btn btn--outline btn--lg" id="rules-btn">📖 Правила</button>
+        <div id="menu" class="screen active">
+            <h1>🎲 Ходилка-приключение</h1>
+            <h2>Модульная версия</h2>
+            
+            <div class="players-setup">
+                <div class="player-form">
+                    <h3>Добавить игрока</h3>
+                    <div class="input-group">
+                        <label for="player-name">Имя игрока:</label>
+                        <input type="text" id="player-name" placeholder="Введите имя">
+                    </div>
+                    <button class="btn" id="add-player">Добавить игрока</button>
+                    <button class="btn" id="add-bot">Добавить бота</button>
+                </div>
+
+                <div class="player-form">
+                    <h3>Настройки ботов</h3>
+                    <div class="input-group">
+                        <label for="bot-difficulty">Сложность бота:</label>
+                        <select id="bot-difficulty">
+                            <option value="easy">Легкая</option>
+                            <option value="medium" selected>Средняя</option>
+                            <option value="hard">Сложная</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label for="bot-name">Имя бота:</label>
+                        <input type="text" id="bot-name" placeholder="Бот">
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Настройки -->
-        <div id="settings-screen" class="screen">
-            <div class="settings-container">
-                <h2>⚙️ Настройки игры</h2>
-                
-                <div class="settings-section">
-                    <h3>Активные темы вопросов</h3>
-                    <div class="themes-grid">
-                        <label class="theme-checkbox">
-                            <input type="checkbox" id="mathematics" checked>
-                            <span class="checkmark"></span>
-                            <span class="theme-name">🧮 Математика</span>
-                        </label>
-                        <label class="theme-checkbox">
-                            <input type="checkbox" id="geography" checked>
-                            <span class="checkmark"></span>
-                            <span class="theme-name">🌍 География</span>
-                        </label>
-                        <label class="theme-checkbox">
-                            <input type="checkbox" id="history" checked>
-                            <span class="checkmark"></span>
-                            <span class="theme-name">📚 История</span>
-                        </label>
-                        <label class="theme-checkbox">
-                            <input type="checkbox" id="biology" checked>
-                            <span class="checkmark"></span>
-                            <span class="theme-name">🌿 Биология</span>
-                        </label>
-                        <label class="theme-checkbox">
-                            <input type="checkbox" id="riddles" checked>
-                            <span class="checkmark"></span>
-                            <span class="theme-name">💡 Загадки</span>
-                        </label>
-                    </div>
+            <div class="themes-selection">
+                <h3>Выберите темы вопросов:</h3>
+                <div class="theme-checkbox">
+                    <input type="checkbox" id="theme-math" value="math" checked>
+                    <label for="theme-math">Математика</label>
                 </div>
-
-                <div class="settings-actions">
-                    <button class="btn btn--primary" id="save-settings-btn">💾 Сохранить</button>
-                    <button class="btn btn--outline" id="back-to-menu-btn">← Назад</button>
+                <div class="theme-checkbox">
+                    <input type="checkbox" id="theme-geography" value="geography" checked>
+                    <label for="theme-geography">География</label>
+                </div>
+                <div class="theme-checkbox">
+                    <input type="checkbox" id="theme-history" value="history">
+                    <label for="theme-history">История</label>
+                </div>
+                <div class="theme-checkbox">
+                    <input type="checkbox" id="theme-biology" value="biology">
+                    <label for="theme-biology">Биология</label>
+                </div>
+                <div class="theme-checkbox">
+                    <input type="checkbox" id="theme-riddles" value="riddles">
+                    <label for="theme-riddles">Загадки</label>
                 </div>
             </div>
-        </div>
 
-        <!-- Правила -->
-        <div id="rules-screen" class="screen">
-            <div class="rules-container">
-                <h2>📖 Правила игры</h2>
-                <div class="rules-content">
-                    <div class="rule-section">
-                        <h3>🎯 Цель игры</h3>
-                        <p>Первым дойти до финиша на 120-й клетке игрового поля.</p>
-                    </div>
-                    
-                    <div class="rule-section">
-                        <h3>🎲 Как играть</h3>
-                        <ul>
-                            <li>Бросайте кубик и двигайтесь на выпавшее количество клеток</li>
-                            <li>На каждой клетке отвечайте на вопрос из выбранных тем</li>
-                            <li>Вводите ответ текстом в поле ввода</li>
-                            <li>При правильном ответе игра продолжается</li>
-                            <li>При неправильном ответе пропускаете следующий ход</li>
-                            <li><strong>Пустые ответы считаются неправильными!</strong></li>
-                        </ul>
-                    </div>
-
-                    <div class="rule-section">
-                        <h3>🟢🔴 Специальные клетки</h3>
-                        <ul>
-                            <li><span class="green-cell">Зелёные клетки</span> - прыжок вперёд</li>
-                            <li><span class="red-cell">Красные клетки</span> - прыжок назад</li>
-                            <li>На этих клетках вопросы не задаются</li>
-                        </ul>
-                    </div>
-
-                    <div class="rule-section">
-                        <h3>🤖 Сложность ботов</h3>
-                        <ul>
-                            <li><strong>Легкий:</strong> 30% шанс правильного ответа</li>
-                            <li><strong>Средний:</strong> 60% шанс правильного ответа</li>
-                            <li><strong>Сложный:</strong> 85% шанс правильного ответа</li>
-                        </ul>
-                    </div>
-
-                    <div class="rule-section">
-                        <h3>👥 Количество игроков</h3>
-                        <p>Можно играть от 1 до 4 игроков. При игре в одиночку автоматически добавляются боты.</p>
-                    </div>
-                </div>
-                <button class="btn btn--primary" id="back-from-rules-btn">← Назад к меню</button>
+            <div class="players-list">
+                <h3>Игроки:</h3>
+                <div id="players-list"></div>
             </div>
-        </div>
 
-        <!-- Выбор игроков -->
-        <div id="player-setup-screen" class="screen">
-            <div class="setup-container">
-                <h2>👥 Выберите количество игроков</h2>
-                <div class="player-buttons">
-                    <button class="btn btn--primary player-count-btn" data-players="1">1 игрок + боты</button>
-                    <button class="btn btn--primary player-count-btn" data-players="2">2 игрока</button>
-                    <button class="btn btn--primary player-count-btn" data-players="3">3 игрока</button>
-                    <button class="btn btn--primary player-count-btn" data-players="4">4 игрока</button>
-                </div>
-                <button class="btn btn--outline" id="back-from-setup-btn">← Назад</button>
-            </div>
-        </div>
-
-        <!-- Выбор сложности ботов -->
-        <div id="bot-difficulty-screen" class="screen">
-            <div class="setup-container">
-                <h2>🤖 Выберите сложность ботов</h2>
-                <p class="game-subtitle">Это влияет на вероятность правильных ответов ботов</p>
-                <div class="difficulty-buttons">
-                    <button class="btn btn--secondary btn--lg difficulty-btn" data-difficulty="easy">
-                        <div class="difficulty-content">
-                            <div class="difficulty-title">😊 Легкий</div>
-                            <div class="difficulty-description">30% правильных ответов</div>
-                        </div>
-                    </button>
-                    <button class="btn btn--primary btn--lg difficulty-btn" data-difficulty="medium">
-                        <div class="difficulty-content">
-                            <div class="difficulty-title">😐 Средний</div>
-                            <div class="difficulty-description">60% правильных ответов</div>
-                        </div>
-                    </button>
-                    <button class="btn btn--secondary btn--lg difficulty-btn" data-difficulty="hard">
-                        <div class="difficulty-content">
-                            <div class="difficulty-title">😤 Сложный</div>
-                            <div class="difficulty-description">85% правильных ответов</div>
-                        </div>
-                    </button>
-                </div>
-                <button class="btn btn--outline" id="back-from-difficulty-btn">← Назад</button>
+            <div style="text-align: center;">
+                <button class="btn" id="start-game" disabled>Начать игру</button>
+                <button class="btn" id="reset-game">Сбросить всё</button>
             </div>
         </div>
 
         <!-- Игровой экран -->
-        <div id="game-screen" class="screen">
-            <div class="game-layout">
-                <!-- Левая часть: игровое поле -->
-                <div class="game-board-container">
-                    <canvas id="game-board"></canvas>
+        <div id="game" class="screen">
+            <h1>🎮 Игра в процессе</h1>
+            
+            <div class="game-area">
+                <div class="game-canvas">
+                    <canvas id="game-board" width="800" height="600"></canvas>
                 </div>
-
-                <!-- Правая панель -->
-                <div class="right-panel">
-                    <!-- Верхняя секция: список игроков -->
-                    <div class="players-section card">
-                        <div class="card__body">
-                            <h3>👥 Игроки</h3>
-                            <div class="players-list" id="players-list"></div>
-                        </div>
+                
+                <div class="game-controls">
+                    <div class="control-section">
+                        <h4>Текущий ход:</h4>
+                        <div id="current-player">Игрок</div>
                     </div>
-
-                    <!-- Нижняя секция: управление -->
-                    <div class="control-section card">
-                        <div class="card__body">
-                            <div class="current-player-info">
-                                <h4>Ход игрока:</h4>
-                                <div class="current-player">
-                                    <span class="player-indicator"></span>
-                                    <span class="player-name"></span>
-                                </div>
-                            </div>
-                            
-                            <div class="dice-section">
-                                <div class="dice-container">
-                                    <button class="btn btn--primary btn--full-width" id="roll-dice-btn">🎲 Бросить кубик</button>
-                                    <div class="dice-result"></div>
-                                </div>
-                            </div>
-                            
-                            <div class="game-actions">
-                                <button class="btn btn--outline btn--full-width" id="exit-game-btn">🚪 Выйти из игры</button>
-                            </div>
-                        </div>
+                    
+                    <div class="control-section">
+                        <h4>Кубик:</h4>
+                        <div id="dice-result">-</div>
+                        <button class="btn" id="roll-dice">Бросить кубик</button>
+                        <button class="btn" id="move-player" disabled>Двигаться</button>
                     </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Модальное окно с вопросом -->
-        <div id="question-modal" class="modal">
-            <div class="modal-content">
-                <div class="question-header">
-                    <h3 class="question-theme"></h3>
-                </div>
-                <div class="question-text"></div>
-                <div class="question-input">
-                    <input type="text" class="form-control" id="answer-input" placeholder="Введите ваш ответ..." autocomplete="off">
-                </div>
-                <div class="question-actions">
-                    <button class="btn btn--primary" id="submit-answer-btn">✓ Ответить</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Модальное окно результата -->
-        <div id="result-modal" class="modal">
-            <div class="modal-content">
-                <div class="result-content">
-                    <div class="result-icon"></div>
-                    <div class="result-text"></div>
-                    <div class="correct-answer"></div>
-                </div>
-                <button class="btn btn--primary" id="continue-game-btn">Продолжить</button>
-            </div>
-        </div>
-
-        <!-- Модальное окно победы -->
-        <div id="victory-modal" class="modal">
-            <div class="modal-content">
-                <div class="victory-content">
-                    <h2>🎉 Победа!</h2>
-                    <div class="winner-info">
-                        <div class="winner-color"></div>
-                        <div class="winner-text"></div>
+                    
+                    <div class="control-section">
+                        <h4>Игроки:</h4>
+                        <div id="players-list-game"></div>
                     </div>
-                </div>
-                <div class="victory-actions">
-                    <button class="btn btn--primary" id="new-game-from-victory-btn">🎮 Новая игра</button>
-                    <button class="btn btn--outline" id="menu-from-victory-btn">🏠 Главное меню</button>
+                    
+                    <div class="control-section">
+                        <button class="btn" id="back-to-menu">В главное меню</button>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <script src="app.js"></script>
+    <!-- Модальные окна -->
+    <div id="question-modal" class="modal">
+        <div class="modal-content">
+            <h3>Вопрос</h3>
+            <p id="question-text"></p>
+            <input type="text" id="answer-input" placeholder="Введите ответ">
+            <div>
+                <button class="btn" id="submit-answer">Ответить</button>
+                <button class="btn" id="skip-question">Пропустить</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="message-modal" class="modal">
+        <div class="modal-content">
+            <h3 id="message-title">Сообщение</h3>
+            <p id="message-text"></p>
+            <button class="btn" id="close-message">OK</button>
+        </div>
+    </div>
+
+    <div id="results-modal" class="modal">
+        <div class="modal-content">
+            <div id="results-content"></div>
+            <button class="btn" id="close-results">Закрыть</button>
+        </div>
+    </div>
+
+    <script type="module" src="main.js"></script>
 </body>
 </html>
+
