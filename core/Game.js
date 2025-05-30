@@ -19,7 +19,7 @@ export class Game {
         this.eventHandler = new EventHandler(this);
         
         // Игровые настройки
-        this.selectedThemes = new Set(['math', 'geography']);
+        this.selectedThemes = new Set(['math', 'riddles']);
         this.currentQuestion = null;
         this.dice = null;
         
