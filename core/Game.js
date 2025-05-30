@@ -9,7 +9,6 @@ import { GAME_CONFIG, BOT_DIFFICULTY, SCREENS } from './Constants.js';
 
 export class Game {
     constructor() {
-        // Основные компоненты системы
         this.gameState = new GameState();
         this.gameBoard = new GameBoard();
         this.questionLoader = new QuestionLoader();
@@ -18,17 +17,14 @@ export class Game {
         this.modalManager = new ModalManager();
         this.eventHandler = new EventHandler(this);
         
-        // Игровые настройки (будут загружены из конфигурации)
-        this.selectedThemes = new Set(); // Пустой набор, загрузится из конфигурации
+        this.selectedThemes = new Set();
         this.availableSubjects = [];
         this.currentQuestion = null;
         this.dice = null;
         
-        // Состояние инициализации
         this.initialized = false;
         this.debug = true;
         
-        // Привязываем контекст методов
         this.handleAnswer = this.handleAnswer.bind(this);
         this.handleBotAnswer = this.handleBotAnswer.bind(this);
         this.askQuestion = this.askQuestion.bind(this);
@@ -48,11 +44,9 @@ export class Game {
         try {
             this.log('🚀 Инициализация игры...');
             
-            // Ожидаем полной готовности DOM
             await this.waitForDOMReady();
             this.log('✅ DOM полностью готов');
             
-            // Загрузка вопросов и получение доступных предметов
             this.log('📚 Загрузка вопросов...');
             const questionsLoaded = await this.questionLoader.loadQuestions();
             if (!questionsLoaded) {
@@ -60,49 +54,39 @@ export class Game {
             }
             this.log('✅ Вопросы загружены');
             
-            // Получаем доступные предметы из загрузчика
             this.availableSubjects = this.questionLoader.getAvailableSubjects();
             this.log('🎯 Доступные предметы:', this.availableSubjects);
             
-            // Устанавливаем темы по умолчанию
             const defaultSubjects = this.questionLoader.getDefaultSubjects();
             this.selectedThemes = new Set(defaultSubjects);
             this.log('🎯 Темы по умолчанию:', defaultSubjects);
             
-            // Инициализация Canvas рендерера
             this.canvasRenderer = new CanvasRenderer();
             this.log('✅ CanvasRenderer создан');
             
-            // Ждем появления всех критически важных элементов
             await this.waitForCriticalElements();
             this.log('✅ Все критически важные элементы найдены');
             
-            // ВАЖНО: Создаем интерфейс разделов знаний ДО инициализации EventHandler
             this.log('🎨 Создание интерфейса разделов знаний...');
             await this.createSubjectsInterface();
             this.log('✅ Интерфейс разделов знаний создан');
             
-            // Инициализация менеджера экранов
             this.screenManager.initialize();
             this.log('✅ ScreenManager инициализирован');
             
-            // Инициализация менеджера модальных окон
             this.modalManager.initialize();
             this.log('✅ ModalManager инициализирован');
             
-            // Настройка обработчиков событий (ПОСЛЕ создания интерфейса)
             this.log('🎮 Настройка обработчиков событий...');
             this.eventHandler.setupEventListeners();
             this.log('✅ EventHandler настроен');
             
-            // Показ главного меню
             const menuShown = this.screenManager.showScreen(SCREENS.MENU);
             if (!menuShown) {
                 throw new Error('Не удалось показать главное меню');
             }
             this.log('✅ Главное меню отображено');
             
-            // Подписка на события смены экрана
             this.screenManager.onScreenChange((event) => {
                 this.log(`Переход экрана: ${event.detail.from} → ${event.detail.to}`);
                 this.handleScreenChange(event.detail.from, event.detail.to);
@@ -128,19 +112,16 @@ export class Game {
         }
         this.log('✅ Контейнер найден:', container);
 
-        // Скрываем индикатор загрузки
         const loadingIndicator = document.getElementById('themes-loading');
         if (loadingIndicator) {
             loadingIndicator.style.display = 'none';
             this.log('✅ Индикатор загрузки скрыт');
         }
 
-        // Очищаем существующие чекбоксы
         const existingCheckboxes = container.querySelectorAll('.theme-checkbox');
         existingCheckboxes.forEach(checkbox => checkbox.remove());
         this.log(`🧹 Очищено ${existingCheckboxes.length} существующих чекбоксов`);
 
-        // Проверяем наличие доступных предметов
         if (!this.availableSubjects || this.availableSubjects.length === 0) {
             this.error('❌ Нет доступных предметов для создания интерфейса');
             const errorMsg = document.createElement('div');
@@ -154,7 +135,6 @@ export class Game {
 
         this.log(`📋 Создаем чекбоксы для ${this.availableSubjects.length} предметов`);
 
-        // Создаем заголовок если его нет
         let title = container.querySelector('h3');
         if (!title) {
             title = document.createElement('h3');
@@ -163,10 +143,8 @@ export class Game {
             this.log('✅ Заголовок создан');
         }
 
-        // Ждем небольшую задержку для стабильности DOM
         await new Promise(resolve => setTimeout(resolve, 100));
 
-        // Создаем чекбоксы для каждого доступного предмета
         this.availableSubjects.forEach((subject, index) => {
             this.log(`📝 Создаем чекбокс для: ${subject.name} (${subject.id})`);
             
@@ -192,16 +170,13 @@ export class Game {
             this.log(`✅ Чекбокс создан для: ${subject.name} (ID: theme-${subject.id}, checked: ${checkbox.checked})`);
         });
 
-        // Принудительно обновляем DOM
-        container.offsetHeight; // Trigger reflow
+        container.offsetHeight;
         
         this.log('🎨 Интерфейс разделов знаний создан успешно');
         
-        // Проверяем результат
         const createdCheckboxes = container.querySelectorAll('.theme-checkbox');
         this.log(`✅ Создано ${createdCheckboxes.length} чекбоксов в DOM`);
         
-        // Выводим детальную информацию о созданных элементах
         createdCheckboxes.forEach((cb, i) => {
             const input = cb.querySelector('input');
             const span = cb.querySelector('span');
@@ -209,7 +184,6 @@ export class Game {
         });
     }
 
-    // Ожидание готовности DOM
     waitForDOMReady() {
         return new Promise((resolve) => {
             if (document.readyState === 'complete') {
@@ -226,7 +200,6 @@ export class Game {
         });
     }
 
-    // Ожидание появления критически важных элементов
     waitForCriticalElements() {
         return new Promise((resolve, reject) => {
             const criticalElements = [
@@ -247,7 +220,6 @@ export class Game {
                     return !element;
                 });
                 
-                // Проверяем наличие контейнера тем отдельно
                 const themesContainer = document.querySelector('.themes-selection');
                 if (!themesContainer) {
                     missingElements.push('themes-selection');
@@ -270,9 +242,7 @@ export class Game {
     }
 
     handleScreenChange(from, to) {
-        // Обработка переходов между экранами
         if (to === SCREENS.GAME && this.canvasRenderer) {
-            // При переходе на игровой экран инициализируем Canvas
             setTimeout(() => {
                 if (this.canvasRenderer.setupCanvas()) {
                     this.updateGameDisplay();
@@ -300,13 +270,10 @@ export class Game {
             this.gameState.gameStarted = true;
             this.gameState.gameEnded = false;
             
-            // Переход на игровой экран
             this.screenManager.showScreen(SCREENS.GAME);
             
-            // Небольшая задержка для загрузки экрана
             await new Promise(resolve => setTimeout(resolve, 300));
             
-            // Инициализация Canvas после перехода на игровой экран
             if (this.canvasRenderer && this.canvasRenderer.setupCanvas()) {
                 this.updateGameDisplay();
                 this.log('✅ Canvas инициализирован');
@@ -314,13 +281,11 @@ export class Game {
                 this.error('❌ Не удалось инициализировать Canvas');
             }
             
-            // Обновляем интерфейс
             this.updateCurrentPlayerDisplay();
             this.updateGameControlsDisplay();
             
             this.log('🎉 Игра началась!');
             
-            // Автоматический ход для бота, если первый игрок - бот
             const currentPlayer = this.gameState.getCurrentPlayer();
             if (currentPlayer && currentPlayer.isBot) {
                 setTimeout(() => this.rollDice(), 1500);
@@ -346,7 +311,6 @@ export class Game {
                 return null;
             }
 
-            // Проверяем, что имя уникально
             const existingNames = this.gameState.players.map(p => p.name.toLowerCase());
             if (existingNames.includes(name.toLowerCase())) {
                 this.modalManager.showMessage('Внимание', 'Игрок с таким именем уже существует!');
@@ -382,11 +346,9 @@ export class Game {
             this.dice = Math.floor(Math.random() * 6) + 1;
             this.log(`🎲 ${currentPlayer.name} бросил кубик: ${this.dice}`);
             
-            // Обновляем отображение кубика
             this.updateDiceDisplay();
             this.updateGameControlsDisplay();
             
-            // Для ботов автоматически делаем ход
             if (currentPlayer.isBot) {
                 setTimeout(() => this.moveCurrentPlayer(), 1000);
             }
@@ -408,18 +370,18 @@ export class Game {
             const oldPosition = currentPlayer.position;
             const newPosition = this.gameState.movePlayer(currentPlayer.id, this.dice);
             
-            this.dice = null; // Сбрасываем кубик
+            this.dice = null;
             
-            // Проверяем специальные клетки (лестницы/змеи)
             const jumpDestination = this.gameBoard.getJumpDestination(newPosition);
             if (jumpDestination !== null) {
                 const isLadder = jumpDestination > newPosition;
-                currentPlayer.position = jumpDestination;
+                
+                this.gameState.setPlayerPosition(currentPlayer.id, jumpDestination);
                 
                 const message = isLadder ? 'Лестница вверх!' : 'Змея вниз!';
                 this.modalManager.showMessage(
                     `${currentPlayer.name} попал на специальную клетку!`,
-                    `${message} Новая позиция: ${jumpDestination + 1}`,
+                    `${message}\nНовая позиция: ${jumpDestination + 1}`,
                     () => this.continueAfterMove()
                 );
                 
@@ -429,8 +391,9 @@ export class Game {
                 this.continueAfterMove();
             }
             
-            // Обновляем отображение
             this.updateGameDisplay();
+            this.updatePlayersDisplay();
+            this.updatePlayersGameDisplay();
             
         } catch (error) {
             this.error('Ошибка движения игрока:', error);
@@ -438,14 +401,12 @@ export class Game {
     }
 
     continueAfterMove() {
-        // Проверяем победу
         const winner = this.gameState.checkWinner();
         if (winner) {
             this.endGame(winner);
             return;
         }
 
-        // Задаем вопрос
         this.askQuestion();
     }
 
@@ -456,7 +417,6 @@ export class Game {
 
             this.log(`❓ Задаем вопрос игроку ${currentPlayer.name}`);
             
-            // Получаем случайный вопрос из выбранных тем
             this.currentQuestion = this.questionLoader.getRandomQuestion([...this.selectedThemes]);
             
             if (currentPlayer.isBot) {
@@ -483,7 +443,6 @@ export class Game {
             
             this.log(`🤖 Бот ${currentPlayer.name} думает... (${difficulty.thinkTime}ms)`);
             
-            // Симуляция времени размышления
             await new Promise(resolve => setTimeout(resolve, difficulty.thinkTime));
             
             const isCorrect = Math.random() < difficulty.correctChance;
@@ -519,12 +478,13 @@ export class Game {
                     () => this.nextTurn()
                 );
             } else {
+                this.gameState.setSkipTurns(currentPlayer.id, 1);
+                
                 this.modalManager.showMessage(
                     'Неправильно 😔', 
-                    `Правильный ответ: ${this.currentQuestion.answer}. Пропускаете следующий ход.`,
-                    () => this.nextTurn()
+                    `Правильный ответ: ${this.currentQuestion.answer}.\nВы пропускаете следующий ход.`,
+                    () => this.nextTurnAfterWrongAnswer()
                 );
-                this.gameState.setSkipTurns(currentPlayer.id, 1);
             }
 
             this.currentQuestion = null;
@@ -535,20 +495,44 @@ export class Game {
         }
     }
 
+    nextTurnAfterWrongAnswer() {
+        try {
+            this.gameState.forceNextPlayer();
+            
+            this.updateCurrentPlayerDisplay();
+            this.updateGameControlsDisplay();
+            this.updatePlayersDisplay();
+            this.updatePlayersGameDisplay();
+            
+            this.dice = null;
+            this.updateDiceDisplay();
+
+            const currentPlayer = this.gameState.getCurrentPlayer();
+            this.log(`🔄 Переход хода после неправильного ответа к: ${currentPlayer?.name}`);
+
+            if (currentPlayer && currentPlayer.isBot) {
+                setTimeout(() => this.rollDice(), 1500);
+            }
+        } catch (error) {
+            this.error('Ошибка смены хода после неправильного ответа:', error);
+        }
+    }
+
     nextTurn() {
         try {
             this.gameState.nextPlayer();
+            
             this.updateCurrentPlayerDisplay();
             this.updateGameControlsDisplay();
+            this.updatePlayersDisplay();
+            this.updatePlayersGameDisplay();
             
-            // Сбрасываем отображение кубика
             this.dice = null;
             this.updateDiceDisplay();
 
             const currentPlayer = this.gameState.getCurrentPlayer();
             this.log(`🔄 Переход хода к: ${currentPlayer?.name}`);
 
-            // Автоматический ход для бота
             if (currentPlayer && currentPlayer.isBot) {
                 setTimeout(() => this.rollDice(), 1500);
             }
@@ -607,20 +591,15 @@ export class Game {
             this.dice = null;
             this.currentQuestion = null;
             
-            // Сбрасываем к темам по умолчанию
             const defaultSubjects = this.questionLoader.getDefaultSubjects();
             this.selectedThemes = new Set(defaultSubjects);
             
-            // Возврат в главное меню
             this.screenManager.showScreen(SCREENS.MENU);
             
-            // Очистка отображения
             this.updatePlayersDisplay();
             
-            // Обновляем чекбоксы тем к состоянию по умолчанию
             this.resetThemeCheckboxes();
             
-            // Очистка Canvas
             const canvas = document.getElementById('game-board');
             if (canvas) {
                 const ctx = canvas.getContext('2d');
@@ -643,7 +622,6 @@ export class Game {
         });
     }
 
-    // Методы обновления интерфейса
     updateGameDisplay() {
         try {
             if (this.canvasRenderer && this.canvasRenderer.initialized) {
@@ -666,21 +644,25 @@ export class Game {
             return;
         }
         
-        container.innerHTML = this.gameState.players.map((player, index) => `
-            <div class="player-item" style="border-left: 4px solid ${player.color}">
-                <div class="player-info">
-                    <span class="player-name">${player.name} ${player.isBot ? '(Бот)' : ''}</span>
-                    <span class="player-position">Позиция: ${player.position + 1}/120</span>
-                </div>
-                ${player.questionsAnswered > 0 ? `
-                    <div class="player-stats">
-                        <small>Точность: ${player.getAccuracy()}% (${player.correctAnswers}/${player.questionsAnswered})</small>
+        container.innerHTML = this.gameState.players.map((player, index) => {
+            const skipTurns = this.gameState.getSkipTurns(player.id);
+            const skipInfo = skipTurns > 0 ? ` (Пропускает: ${skipTurns})` : '';
+            
+            return `
+                <div class="player-item" style="border-left: 4px solid ${player.color}">
+                    <div class="player-info">
+                        <span class="player-name">${player.name} ${player.isBot ? '(Бот)' : ''}${skipInfo}</span>
+                        <span class="player-position">Позиция: ${player.position + 1}/120</span>
                     </div>
-                ` : ''}
-            </div>
-        `).join('');
+                    ${player.questionsAnswered > 0 ? `
+                        <div class="player-stats">
+                            <small>Точность: ${player.getAccuracy()}% (${player.correctAnswers}/${player.questionsAnswered})</small>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }).join('');
         
-        // Обновляем состояние кнопки начала игры
         if (this.eventHandler && this.eventHandler.updateStartButtonState) {
             this.eventHandler.updateStartButtonState();
         }
@@ -690,15 +672,20 @@ export class Game {
         const container = document.getElementById('players-list-game');
         if (!container) return;
         
-        container.innerHTML = this.gameState.players.map(player => `
-            <div class="player-item" style="border-left: 4px solid ${player.color}; ${player.id === this.gameState.currentPlayerIndex ? 'background: #e3f2fd;' : ''}">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span>${player.name}</span>
-                    <span>${player.position + 1}/120</span>
+        container.innerHTML = this.gameState.players.map(player => {
+            const isCurrentPlayer = player.id === this.gameState.currentPlayerIndex;
+            const skipTurns = this.gameState.getSkipTurns(player.id);
+            
+            return `
+                <div class="player-item" style="border-left: 4px solid ${player.color}; ${isCurrentPlayer ? 'background: #e3f2fd;' : ''}">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>${player.name}${isCurrentPlayer ? ' ←' : ''}</span>
+                        <span>${player.position + 1}/120</span>
+                    </div>
+                    ${skipTurns > 0 ? `<small style="color: #e74c3c;">Пропускает: ${skipTurns} ход(ов)</small>` : ''}
                 </div>
-                ${player.skipTurns > 0 ? `<small style="color: #e74c3c;">Пропускает: ${player.skipTurns} ход(ов)</small>` : ''}
-            </div>
-        `).join('');
+            `;
+        }).join('');
     }
 
     updateCurrentPlayerDisplay() {
@@ -706,7 +693,10 @@ export class Game {
         const element = document.getElementById('current-player');
         
         if (element && currentPlayer) {
-            element.textContent = `Ход: ${currentPlayer.name}`;
+            const skipTurns = this.gameState.getSkipTurns(currentPlayer.id);
+            const skipText = skipTurns > 0 ? ` (Пропускает: ${skipTurns})` : '';
+            
+            element.textContent = `Ход: ${currentPlayer.name}${skipText}`;
             element.style.color = currentPlayer.color;
         }
     }
@@ -738,7 +728,6 @@ export class Game {
         }
     }
 
-    // Отладочные методы
     getDebugInfo() {
         return {
             initialized: this.initialized,
@@ -754,7 +743,6 @@ export class Game {
         };
     }
 
-    // Принудительные методы для отладки
     forceAddTestPlayers() {
         this.addPlayer('Тестовый игрок', false);
         this.addPlayer('Тестовый бот', true, 'easy');
@@ -768,7 +756,6 @@ export class Game {
         this.startGame();
     }
 
-    // Отладочный метод для проверки интерфейса тем
     debugThemesInterface() {
         this.log('=== ОТЛАДКА ИНТЕРФЕЙСА ТЕМ ===');
         this.log('availableSubjects:', this.availableSubjects);
@@ -795,7 +782,19 @@ export class Game {
         };
     }
 
-    // Геттеры для внешнего доступа
+    getGameStateDebug() {
+        return {
+            currentPlayerIndex: this.gameState.currentPlayerIndex,
+            currentPlayer: this.gameState.getCurrentPlayer()?.name,
+            playerPositions: this.gameState.players.map(p => ({
+                name: p.name,
+                position: p.position + 1,
+                skipTurns: this.gameState.getSkipTurns(p.id)
+            })),
+            skipTurnsMap: this.gameState.getAllSkipTurns()
+        };
+    }
+
     get players() {
         return this.gameState.players;
     }
