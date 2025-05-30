@@ -32,10 +32,14 @@ export const BOT_DIFFICULTY = {
     hard: { correctChance: 0.9, thinkTime: 1000 }
 };
 
+// Только реально существующие экраны
 export const SCREENS = {
     MENU: 'menu',
-    SETTINGS: 'settings', 
-    GAME: 'game',
-    RESULTS: 'results'
+    GAME: 'game'
 };
 
+// Дополнительные константы для будущих экранов (закомментированы)
+export const FUTURE_SCREENS = {
+    SETTINGS: 'settings',
+    RESULTS: 'results'
+};
