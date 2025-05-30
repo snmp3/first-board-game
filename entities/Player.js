@@ -40,8 +40,6 @@ export class Player {
         this.questionsAnswered++;
         if (isCorrect) {
             this.correctAnswers++;
-        } else {
-            this.skipTurns = Math.max(0, this.skipTurns + 1);
         }
     }
 
@@ -83,8 +81,8 @@ export class Player {
             color: this.color,
             questionsAnswered: this.questionsAnswered,
             correctAnswers: this.correctAnswers,
-            accuracy: this.getAccuracy()
+            accuracy: this.getAccuracy(),
+            skipTurns: this.skipTurns
         };
     }
 }
-
