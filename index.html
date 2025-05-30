@@ -7,209 +7,196 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="app">
+    <div class="container">
         <!-- Главное меню -->
-        <div id="main-menu" class="screen">
+        <div id="main-menu" class="screen active">
             <div class="menu-container">
-                <h1 class="game-title">🏴‍☠️ Ходилка-приключение</h1>
-                <p class="game-subtitle">Отправляйтесь в захватывающее путешествие по зигзагообразному полю!</p>
+                <h1 class="game-title">🎲 Ходилка-приключение</h1>
+                <p class="game-subtitle">Увлекательная игра с вопросами</p>
                 <div class="menu-buttons">
                     <button class="btn btn--primary btn--lg" id="new-game-btn">🎮 Новая игра</button>
-                    <button class="btn btn--secondary btn--lg" id="rules-btn">📖 Правила</button>
                     <button class="btn btn--secondary btn--lg" id="settings-btn">⚙️ Настройки</button>
+                    <button class="btn btn--outline btn--lg" id="rules-btn">📖 Правила</button>
                 </div>
             </div>
         </div>
 
-        <!-- Настройки игры -->
-        <div id="game-setup" class="screen hidden">
-            <div class="setup-container">
-                <h2>Настройка игры</h2>
-                <div class="setup-form">
-                    <div class="form-group">
-                        <label class="form-label">Количество игроков (1-4):</label>
-                        <select id="player-count" class="form-control">
-                            <option value="1">1 игрок</option>
-                            <option value="2" selected>2 игрока</option>
-                            <option value="3">3 игрока</option>
-                            <option value="4">4 игрока</option>
-                        </select>
+        <!-- Настройки -->
+        <div id="settings-screen" class="screen">
+            <div class="settings-container">
+                <h2>⚙️ Настройки игры</h2>
+                
+                <div class="settings-section">
+                    <h3>Активные темы вопросов</h3>
+                    <div class="themes-grid">
+                        <label class="theme-checkbox">
+                            <input type="checkbox" id="matematika" checked>
+                            <span class="checkmark"></span>
+                            <span class="theme-name">📊 Математика</span>
+                        </label>
+                        <label class="theme-checkbox">
+                            <input type="checkbox" id="geografiya" checked>
+                            <span class="checkmark"></span>
+                            <span class="theme-name">🌍 География</span>
+                        </label>
+                        <label class="theme-checkbox">
+                            <input type="checkbox" id="istoriya" checked>
+                            <span class="checkmark"></span>
+                            <span class="theme-name">📜 История</span>
+                        </label>
+                        <label class="theme-checkbox">
+                            <input type="checkbox" id="biologiya" checked>
+                            <span class="checkmark"></span>
+                            <span class="theme-name">🧬 Биология</span>
+                        </label>
+                        <label class="theme-checkbox">
+                            <input type="checkbox" id="zagadki" checked>
+                            <span class="checkmark"></span>
+                            <span class="theme-name">🧩 Загадки</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="settings-actions">
+                    <button class="btn btn--primary" id="save-settings-btn">💾 Сохранить</button>
+                    <button class="btn btn--outline" id="back-to-menu-btn">← Назад</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Правила -->
+        <div id="rules-screen" class="screen">
+            <div class="rules-container">
+                <h2>📖 Правила игры</h2>
+                <div class="rules-content">
+                    <div class="rule-section">
+                        <h3>🎯 Цель игры</h3>
+                        <p>Первым дойти до финиша на 120-й клетке игрового поля.</p>
                     </div>
                     
-                    <div class="form-group">
-                        <label class="form-label">Сложность ботов:</label>
-                        <select id="bot-difficulty" class="form-control">
-                            <option value="easy">Легкий</option>
-                            <option value="medium" selected>Средний</option>
-                            <option value="hard">Сложный</option>
-                        </select>
+                    <div class="rule-section">
+                        <h3>🎲 Как играть</h3>
+                        <ul>
+                            <li>Бросайте кубик и двигайтесь на выпавшее количество клеток</li>
+                            <li>На каждой клетке отвечайте на вопрос из выбранных тем</li>
+                            <li>Вводите ответ текстом в поле ввода</li>
+                            <li>При правильном ответе игра продолжается</li>
+                            <li>При неправильном ответе пропускаете следующий ход</li>
+                        </ul>
                     </div>
 
-                    <div id="player-setup">
-                        <!-- Динамически генерируемые поля для игроков -->
+                    <div class="rule-section">
+                        <h3>🟢🔴 Специальные клетки</h3>
+                        <ul>
+                            <li><span class="green-cell">Зелёные клетки</span> - прыжок вперёд</li>
+                            <li><span class="red-cell">Красные клетки</span> - прыжок назад</li>
+                            <li>На этих клетках вопросы не задаются</li>
+                        </ul>
                     </div>
 
-                    <div class="setup-buttons">
-                        <button class="btn btn--outline" id="back-to-menu">Назад</button>
-                        <button class="btn btn--primary" id="start-game">Начать игру</button>
+                    <div class="rule-section">
+                        <h3>👥 Количество игроков</h3>
+                        <p>Можно играть от 1 до 4 игроков. При игре в одиночку автоматически добавляются боты.</p>
                     </div>
+                </div>
+                <button class="btn btn--primary" id="back-from-rules-btn">← Назад к меню</button>
+            </div>
+        </div>
+
+        <!-- Выбор игроков -->
+        <div id="player-setup-screen" class="screen">
+            <div class="setup-container">
+                <h2>👥 Выберите количество игроков</h2>
+                <div class="player-buttons">
+                    <button class="btn btn--primary player-count-btn" data-players="1">1 игрок + боты</button>
+                    <button class="btn btn--primary player-count-btn" data-players="2">2 игрока</button>
+                    <button class="btn btn--primary player-count-btn" data-players="3">3 игрока</button>
+                    <button class="btn btn--primary player-count-btn" data-players="4">4 игрока</button>
+                </div>
+                <button class="btn btn--outline" id="back-from-setup-btn">← Назад</button>
+            </div>
+        </div>
+
+        <!-- Ввод имен игроков (НОВЫЙ ЭКРАН) -->
+        <div id="names-setup-screen" class="screen">
+            <div class="names-setup-container">
+                <h2>👤 Введите имена игроков</h2>
+                <div class="player-names-form" id="player-names-form">
+                    <!-- Сюда будут добавлены поля ввода для имен игроков -->
+                </div>
+                <div class="names-actions">
+                    <button class="btn btn--primary" id="start-game-btn">▶️ Начать игру</button>
+                    <button class="btn btn--outline" id="back-from-names-btn">← Назад</button>
                 </div>
             </div>
         </div>
 
         <!-- Игровой экран -->
-        <div id="game-screen" class="screen hidden">
-            <div class="game-layout">
-                <div class="game-header">
+        <div id="game-screen" class="screen">
+            <div class="game-header">
+                <div class="game-info">
                     <div class="current-player">
-                        <span id="current-player-name">Игрок 1</span>
-                        <div id="current-player-color" class="player-color-indicator"></div>
+                        <span class="player-indicator"></span>
+                        <span class="player-name"></span>
                     </div>
-                    <div class="game-stats">
-                        <span>Ход: <span id="turn-counter">1</span></span>
-                        <button class="btn btn--outline btn--sm" id="menu-btn">Меню</button>
-                    </div>
-                </div>
-
-                <div class="game-main">
-                    <div class="board-container">
-                        <canvas id="game-board" width="400" height="480"></canvas>
-                    </div>
-
-                    <div class="game-panel">
-                        <div class="dice-container">
-                            <div id="dice" class="dice">
-                                <span id="dice-value">🎲</span>
-                            </div>
-                            <button id="roll-dice" class="btn btn--primary">Бросить кубик</button>
-                        </div>
-
-                        <div class="players-list">
-                            <h3>Игроки</h3>
-                            <div id="players-status">
-                                <!-- Динамически генерируемый список игроков -->
-                            </div>
-                        </div>
+                    <div class="dice-container">
+                        <button class="btn btn--primary" id="roll-dice-btn">🎲 Бросить кубик</button>
+                        <div class="dice-result"></div>
                     </div>
                 </div>
+                <button class="btn btn--outline btn--sm" id="exit-game-btn">🚪 Выйти</button>
+            </div>
+
+            <div class="game-board-container">
+                <canvas id="game-board"></canvas>
+            </div>
+
+            <div class="players-info">
+                <div class="players-list" id="players-list"></div>
             </div>
         </div>
 
-        <!-- Модальное окно карточки -->
-        <div id="card-modal" class="modal hidden">
+        <!-- Модальное окно с вопросом -->
+        <div id="question-modal" class="modal">
             <div class="modal-content">
-                <div class="card-header">
-                    <h3 id="card-title">Карточка задания</h3>
-                    <span id="card-type" class="status"></span>
+                <div class="question-header">
+                    <h3 class="question-theme"></h3>
                 </div>
-                <div class="card-body">
-                    <p id="card-question"></p>
-                    <div id="card-options" class="card-options">
-                        <!-- Варианты ответов или поле ввода -->
-                    </div>
+                <div class="question-text"></div>
+                <div class="question-input">
+                    <input type="text" class="form-control" id="answer-input" placeholder="Введите ваш ответ...">
                 </div>
-                <div class="card-footer">
-                    <button id="card-submit" class="btn btn--primary">Ответить</button>
+                <div class="question-actions">
+                    <button class="btn btn--primary" id="submit-answer-btn">✓ Ответить</button>
                 </div>
             </div>
         </div>
 
-        <!-- Правила игры -->
-        <div id="rules-screen" class="screen hidden">
-            <div class="rules-container">
-                <h2>Правила игры</h2>
-                <div class="rules-content">
-                    <h3>🎯 Цель игры</h3>
-                    <p>Первым достигнуть финиша (клетка 120), пройдя все испытания и препятствия на зигзагообразном игровом поле.</p>
-
-                    <h3>🗺️ Игровое поле</h3>
-                    <p>Поле состоит из 12 рядов по 10 клеток в каждом (всего 120 клеток). Клетки расположены зигзагообразно:</p>
-                    <ul>
-                        <li>Первый ряд (внизу): клетки 1-10 идут слева направо</li>
-                        <li>Второй ряд: клетки 11-20 идут справа налево</li>
-                        <li>Третий ряд: клетки 21-30 идут слева направо</li>
-                        <li>И так далее, чередуя направления</li>
-                    </ul>
-
-                    <h3>🎲 Как играть</h3>
-                    <ul>
-                        <li>Игроки ходят по очереди, бросая кубик</li>
-                        <li>Передвигайте фишку на выпавшее количество клеток</li>
-                        <li>На каждой обычной клетке получайте задание</li>
-                        <li>Правильный ответ - продолжайте игру, неправильный - пропускайте следующий ход</li>
-                    </ul>
-
-                    <h3>🗺️ Типы клеток</h3>
-                    <div class="cell-types">
-                        <div class="cell-type">
-                            <span class="cell-example green">📈</span>
-                            <span>Зеленые клетки - прыжок вперед на 3-7 клеток (без заданий)</span>
-                        </div>
-                        <div class="cell-type">
-                            <span class="cell-example red">📉</span>
-                            <span>Красные клетки - откат назад на 2-5 клеток (без заданий)</span>
-                        </div>
-                        <div class="cell-type">
-                            <span class="cell-example normal">❓</span>
-                            <span>Обычные клетки - карточки с заданиями</span>
-                        </div>
-                    </div>
-
-                    <h3>🃏 Карточки заданий</h3>
-                    <ul>
-                        <li><strong>Математика:</strong> простые примеры на сложение, вычитание, умножение</li>
-                        <li><strong>Загадки:</strong> отгадайте загадку, введя ответ</li>
-                        <li><strong>Знания:</strong> вопросы на общую эрудицию</li>
-                    </ul>
-                    <p><strong>Правильный ответ:</strong> ход переходит к следующему игроку<br>
-                    <strong>Неправильный ответ:</strong> пропуск следующего хода (появляется значок 😴)</p>
-
-                    <h3>⏭️ Пропуск хода</h3>
-                    <p>Если игрок ответил неправильно, рядом с его именем появится значок 😴, и в свой следующий ход он автоматически пропустит его.</p>
+        <!-- Модальное окно результата -->
+        <div id="result-modal" class="modal">
+            <div class="modal-content">
+                <div class="result-content">
+                    <div class="result-icon"></div>
+                    <div class="result-text"></div>
+                    <div class="correct-answer"></div>
                 </div>
-                <button class="btn btn--primary" id="rules-back">Понятно</button>
+                <button class="btn btn--primary" id="continue-game-btn">Продолжить</button>
             </div>
         </div>
 
-        <!-- Настройки -->
-        <div id="settings-screen" class="screen hidden">
-            <div class="settings-container">
-                <h2>Настройки</h2>
-                <div class="settings-content">
-                    <div class="form-group">
-                        <label class="form-label">
-                            <input type="checkbox" id="sound-enabled" checked> Звуковые эффекты
-                        </label>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Громкость звука:</label>
-                        <input type="range" id="volume-slider" min="0" max="100" value="50" class="form-control">
+        <!-- Модальное окно победы -->
+        <div id="victory-modal" class="modal">
+            <div class="modal-content">
+                <div class="victory-content">
+                    <h2>🎉 Победа!</h2>
+                    <div class="winner-info">
+                        <div class="winner-color"></div>
+                        <div class="winner-text"></div>
                     </div>
                 </div>
-                <button class="btn btn--primary" id="settings-back">Сохранить</button>
-            </div>
-        </div>
-
-        <!-- Результаты игры -->
-        <div id="game-results" class="screen hidden">
-            <div class="results-container">
-                <h2>🎉 Игра завершена!</h2>
-                <div class="winner-info">
-                    <div class="winner-display">
-                        <span id="winner-name">Игрок 1</span>
-                        <div id="winner-color" class="player-color-indicator large"></div>
-                    </div>
-                    <h3>Поздравляем победителя!</h3>
-                </div>
-                <div class="final-stats">
-                    <h3>Итоговые результаты:</h3>
-                    <div id="final-positions">
-                        <!-- Динамически генерируемые результаты -->
-                    </div>
-                </div>
-                <div class="results-buttons">
-                    <button class="btn btn--primary" id="new-game-again">Новая игра</button>
-                    <button class="btn btn--outline" id="back-to-main">Главное меню</button>
+                <div class="victory-actions">
+                    <button class="btn btn--primary" id="new-game-from-victory-btn">🎮 Новая игра</button>
+                    <button class="btn btn--outline" id="menu-from-victory-btn">🏠 Главное меню</button>
                 </div>
             </div>
         </div>

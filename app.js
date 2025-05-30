@@ -1,807 +1,626 @@
-// Конфигурация игры
-const GAME_CONFIG = {
-  boardSize: 120,
-  rows: 12,
-  cols: 10,
-  cellSize: 40,
-  canvasWidth: 400,
-  canvasHeight: 480,
-  specialCells: {
-    jumpUp: [15, 28, 42, 55, 67, 79, 91, 103],
-    jumpDown: [22, 36, 48, 61, 74, 87, 99, 112]
-  },
-  jumpRanges: {
-    up: { min: 3, max: 7 },
-    down: { min: 2, max: 5 }
-  }
-};
-
-const CARDS = [
-  {
-    type: "math",
-    question: "Сколько будет 7 + 5?",
-    answer: "12",
-    options: ["10", "11", "12", "13"]
-  },
-  {
-    type: "math",
-    question: "Сколько будет 15 - 8?",
-    answer: "7",
-    options: ["6", "7", "8", "9"]
-  },
-  {
-    type: "riddle",
-    question: "Что можно увидеть с закрытыми глазами?",
-    answer: "сон"
-  },
-  {
-    type: "knowledge",
-    question: "Какой самый большой океан на Земле?",
-    answer: "Тихий",
-    options: ["Атлантический", "Тихий", "Индийский", "Северный Ледовитый"]
-  },
-  {
-    type: "math",
-    question: "Сколько будет 6 × 4?",
-    answer: "24",
-    options: ["20", "22", "24", "26"]
-  },
-  {
-    type: "riddle",
-    question: "Зимой и летом одним цветом. Что это?",
-    answer: "елка"
-  },
-  {
-    type: "knowledge",
-    question: "Сколько дней в неделе?",
-    answer: "7",
-    options: ["5", "6", "7", "8"]
-  },
-  {
-    type: "math",
-    question: "Сколько будет 20 ÷ 4?",
-    answer: "5",
-    options: ["4", "5", "6", "7"]
-  },
-  {
-    type: "knowledge",
-    question: "Какого цвета полоски у зебры?",
-    answer: "Черно-белые",
-    options: ["Черно-белые", "Коричнево-белые", "Серо-белые", "Желто-белые"]
-  }
-];
-
-const PLAYER_COLORS = ["#FF4444", "#4444FF", "#44FF44", "#FFFF44"];
-const BOT_NAMES = ["Робот Макс", "Бот Алиса", "ИИ Степан"];
-
-// Главный класс игры
+// Игра "Ходилка-приключение"
 class AdventureGame {
-  constructor() {
-    this.currentScreen = 'main-menu';
-    this.gameState = {
-      players: [],
-      currentPlayer: 0,
-      turnCounter: 1,
-      gameStarted: false,
-      gameEnded: false
-    };
-    this.settings = {
-      soundEnabled: true,
-      volume: 50
-    };
-    this.board = null;
-    this.cardSystem = new CardSystem();
-    this.botSystem = new BotSystem();
-    
-    this.loadSettings();
-    this.initializeEventListeners();
-    this.showScreen('main-menu');
-  }
-
-  // Инициализация обработчиков событий
-  initializeEventListeners() {
-    // Главное меню
-    document.getElementById('new-game-btn').addEventListener('click', () => {
-      this.showScreen('game-setup');
-    });
-    
-    document.getElementById('rules-btn').addEventListener('click', () => {
-      this.showScreen('rules-screen');
-    });
-    
-    document.getElementById('settings-btn').addEventListener('click', () => {
-      this.showScreen('settings-screen');
-    });
-
-    // Настройка игры
-    document.getElementById('player-count').addEventListener('change', (e) => {
-      this.updatePlayerSetup(parseInt(e.target.value));
-    });
-
-    document.getElementById('back-to-menu').addEventListener('click', () => {
-      this.showScreen('main-menu');
-    });
-
-    document.getElementById('start-game').addEventListener('click', () => {
-      this.startGame();
-    });
-
-    // Игровой экран
-    document.getElementById('roll-dice').addEventListener('click', () => {
-      this.rollDice();
-    });
-
-    document.getElementById('menu-btn').addEventListener('click', () => {
-      this.showScreen('main-menu');
-    });
-
-    // Карточки
-    document.getElementById('card-submit').addEventListener('click', () => {
-      this.cardSystem.submitAnswer();
-    });
-
-    // Другие экраны
-    document.getElementById('rules-back').addEventListener('click', () => {
-      this.showScreen('main-menu');
-    });
-
-    document.getElementById('settings-back').addEventListener('click', () => {
-      this.saveSettings();
-      this.showScreen('main-menu');
-    });
-
-    // Результаты
-    document.getElementById('new-game-again').addEventListener('click', () => {
-      this.showScreen('game-setup');
-    });
-
-    document.getElementById('back-to-main').addEventListener('click', () => {
-      this.showScreen('main-menu');
-    });
-
-    // Инициализация настройки игроков
-    this.updatePlayerSetup(2);
-  }
-
-  // Переключение экранов
-  showScreen(screenId) {
-    document.querySelectorAll('.screen').forEach(screen => {
-      screen.classList.add('hidden');
-    });
-    document.getElementById(screenId).classList.remove('hidden');
-    this.currentScreen = screenId;
-  }
-
-  // Обновление настройки игроков
-  updatePlayerSetup(playerCount) {
-    const container = document.getElementById('player-setup');
-    container.innerHTML = '';
-
-    for (let i = 0; i < playerCount; i++) {
-      const playerDiv = document.createElement('div');
-      playerDiv.className = 'player-input-group';
-      playerDiv.innerHTML = `
-        <div class="player-color-picker" 
-             style="background-color: ${PLAYER_COLORS[i]}"
-             data-color="${PLAYER_COLORS[i]}"></div>
-        <input type="text" class="form-control" 
-               placeholder="Имя игрока ${i + 1}" 
-               value="Игрок ${i + 1}" 
-               data-player="${i}">
-        <select class="form-control" data-player="${i}">
-          <option value="human">Человек</option>
-          <option value="bot" ${i > 0 ? 'selected' : ''}>Бот</option>
-        </select>
-      `;
-      container.appendChild(playerDiv);
-    }
-  }
-
-  // Начало игры
-  startGame() {
-    const playerInputs = document.querySelectorAll('#player-setup input[type="text"]');
-    const playerTypes = document.querySelectorAll('#player-setup select');
-    const botDifficulty = document.getElementById('bot-difficulty').value;
-
-    this.gameState.players = [];
-    
-    playerInputs.forEach((input, index) => {
-      const isBot = playerTypes[index].value === 'bot';
-      const name = isBot ? BOT_NAMES[index % BOT_NAMES.length] : input.value || `Игрок ${index + 1}`;
-      
-      this.gameState.players.push({
-        id: index,
-        name: name,
-        color: PLAYER_COLORS[index],
-        position: 0,
-        isBot: isBot,
-        botDifficulty: botDifficulty,
-        skipNextTurn: false
-      });
-    });
-
-    this.gameState.currentPlayer = 0;
-    this.gameState.turnCounter = 1;
-    this.gameState.gameStarted = true;
-    this.gameState.gameEnded = false;
-
-    this.board = new GameBoard();
-    this.updateUI();
-    this.showScreen('game-screen');
-
-    // Если первый игрок бот, автоматически начинаем его ход
-    if (this.gameState.players[0].isBot) {
-      setTimeout(() => this.botTurn(), 1000);
-    }
-  }
-
-  // Бросок кубика
-  rollDice() {
-    if (this.gameState.gameEnded) return;
-
-    const currentPlayer = this.gameState.players[this.gameState.currentPlayer];
-    
-    // Проверяем, нужно ли пропустить ход
-    if (currentPlayer.skipNextTurn) {
-      currentPlayer.skipNextTurn = false;
-      this.showMessage(`😴 ${currentPlayer.name} пропускает ход!`);
-      setTimeout(() => {
-        this.nextTurn();
-      }, 1500);
-      return;
-    }
-
-    const diceElement = document.getElementById('dice');
-    const diceValue = document.getElementById('dice-value');
-    const rollButton = document.getElementById('roll-dice');
-    
-    rollButton.disabled = true;
-    diceElement.classList.add('rolling');
-    
-    this.playSound('diceRoll');
-
-    // Анимация броска кубика
-    let rollCount = 0;
-    const rollInterval = setInterval(() => {
-      diceValue.textContent = Math.floor(Math.random() * 6) + 1;
-      rollCount++;
-      
-      if (rollCount > 10) {
-        clearInterval(rollInterval);
-        const finalValue = Math.floor(Math.random() * 6) + 1;
-        diceValue.textContent = finalValue;
-        diceElement.classList.remove('rolling');
+    constructor() {
+        this.questions = {};
+        this.gameSettings = {
+            rows: 12,
+            cols: 10,
+            cellSize: 60,
+            cellPadding: 3,
+            playerColors: ["#ff4444", "#4444ff", "#44ff44", "#ffff44"]
+        };
+        this.jumpCells = {
+            15: {type: "up", target: 35},
+            42: {type: "down", target: 22},
+            55: {type: "down", target: 25},
+            78: {type: "up", target: 94},
+            87: {type: "down", target: 67},
+            115: {type: "down", target: 85}
+        };
+        this.activeThemes = {
+            matematika: true,
+            geografiya: true,
+            istoriya: true,
+            biologiya: true,
+            zagadki: true
+        };
+        this.currentScreen = 'main-menu';
+        this.gameState = null;
+        this.canvas = null;
+        this.ctx = null;
+        this.selectedPlayerCount = 0;
+        this.playerNames = [];
         
-        this.movePlayer(finalValue);
-        rollButton.disabled = false;
-      }
-    }, 100);
-  }
-
-  // Перемещение игрока
-  movePlayer(steps) {
-    const currentPlayer = this.gameState.players[this.gameState.currentPlayer];
-    const oldPosition = currentPlayer.position;
-    let newPosition = Math.min(oldPosition + steps, GAME_CONFIG.boardSize);
-    
-    currentPlayer.position = newPosition;
-    this.board.animatePlayerMove(this.gameState.currentPlayer, oldPosition, newPosition);
-    
-    this.playSound('move');
-
-    setTimeout(() => {
-      this.handleSpecialCell(newPosition);
-    }, 1000);
-  }
-
-  // Обработка специальных клеток
-  handleSpecialCell(position) {
-    const currentPlayer = this.gameState.players[this.gameState.currentPlayer];
-    
-    if (GAME_CONFIG.specialCells.jumpUp.includes(position)) {
-      const jump = Math.floor(Math.random() * (GAME_CONFIG.jumpRanges.up.max - GAME_CONFIG.jumpRanges.up.min + 1)) + GAME_CONFIG.jumpRanges.up.min;
-      currentPlayer.position = Math.min(currentPlayer.position + jump, GAME_CONFIG.boardSize);
-      this.board.updatePlayerPosition(this.gameState.currentPlayer, currentPlayer.position);
-      this.showMessage(`🎉 ${currentPlayer.name} прыгает вперед на ${jump} клеток!`);
-      
-      // Проверка победы после прыжка
-      if (currentPlayer.position >= GAME_CONFIG.boardSize) {
-        setTimeout(() => this.endGame(), 1500);
-        return;
-      }
-      
-      setTimeout(() => {
-        this.nextTurn();
-      }, 1500);
-    } else if (GAME_CONFIG.specialCells.jumpDown.includes(position)) {
-      const jump = Math.floor(Math.random() * (GAME_CONFIG.jumpRanges.down.max - GAME_CONFIG.jumpRanges.down.min + 1)) + GAME_CONFIG.jumpRanges.down.min;
-      currentPlayer.position = Math.max(currentPlayer.position - jump, 0);
-      this.board.updatePlayerPosition(this.gameState.currentPlayer, currentPlayer.position);
-      this.showMessage(`😞 ${currentPlayer.name} откатывается назад на ${jump} клеток!`);
-      
-      setTimeout(() => {
-        this.nextTurn();
-      }, 1500);
-    } else {
-      // Обычная клетка - показываем карточку с заданием
-      this.cardSystem.showCard(currentPlayer);
-      return; // Не переключаем ход до завершения карточки
-    }
-  }
-
-  // Следующий ход
-  nextTurn() {
-    this.gameState.currentPlayer = (this.gameState.currentPlayer + 1) % this.gameState.players.length;
-    
-    if (this.gameState.currentPlayer === 0) {
-      this.gameState.turnCounter++;
+        this.init();
     }
 
-    this.updateUI();
-
-    // Если следующий игрок бот
-    const nextPlayer = this.gameState.players[this.gameState.currentPlayer];
-    if (nextPlayer.isBot) {
-      setTimeout(() => this.botTurn(), 1000);
+    async init() {
+        await this.loadQuestions();
+        this.setupEventListeners();
+        this.loadSettings();
+        this.showScreen('main-menu');
     }
-  }
 
-  // Ход бота
-  botTurn() {
-    if (this.gameState.gameEnded) return;
-    
-    const bot = this.gameState.players[this.gameState.currentPlayer];
-    this.botSystem.makeMove(bot, this.gameState);
-    
-    setTimeout(() => {
-      this.rollDice();
-    }, 500);
-  }
-
-  // Завершение игры
-  endGame() {
-    this.gameState.gameEnded = true;
-    const winner = this.gameState.players[this.gameState.currentPlayer];
-    
-    this.playSound('win');
-    
-    // Сортировка игроков по позициям
-    const sortedPlayers = [...this.gameState.players].sort((a, b) => b.position - a.position);
-    
-    // Отображение результатов
-    document.getElementById('winner-name').textContent = winner.name;
-    document.getElementById('winner-color').style.backgroundColor = winner.color;
-    
-    const finalPositions = document.getElementById('final-positions');
-    finalPositions.innerHTML = '';
-    
-    sortedPlayers.forEach((player, index) => {
-      const positionDiv = document.createElement('div');
-      positionDiv.className = 'position-entry';
-      positionDiv.innerHTML = `
-        <div class="position-info">
-          <span style="font-weight: bold; margin-right: 8px;">${index + 1}.</span>
-          <div class="player-color-indicator" style="background-color: ${player.color}"></div>
-          <span>${player.name}</span>
-        </div>
-        <span>Позиция: ${player.position}</span>
-      `;
-      finalPositions.appendChild(positionDiv);
-    });
-
-    setTimeout(() => {
-      this.showScreen('game-results');
-    }, 2000);
-  }
-
-  // Обновление интерфейса
-  updateUI() {
-    const currentPlayer = this.gameState.players[this.gameState.currentPlayer];
-    
-    // Обновление текущего игрока
-    document.getElementById('current-player-name').textContent = currentPlayer.name;
-    document.getElementById('current-player-color').style.backgroundColor = currentPlayer.color;
-    document.getElementById('turn-counter').textContent = this.gameState.turnCounter;
-
-    // Обновление списка игроков
-    const playersStatus = document.getElementById('players-status');
-    playersStatus.innerHTML = '';
-
-    this.gameState.players.forEach((player, index) => {
-      const playerDiv = document.createElement('div');
-      playerDiv.className = `player-status ${index === this.gameState.currentPlayer ? 'active' : ''}`;
-      const sleepIcon = player.skipNextTurn ? ' 😴' : '';
-      playerDiv.innerHTML = `
-        <div class="player-info">
-          <div class="player-color-indicator" style="background-color: ${player.color}"></div>
-          <span>${player.name}${player.isBot ? ' 🤖' : ''}${sleepIcon}</span>
-        </div>
-        <span class="player-position">${player.position}</span>
-      `;
-      playersStatus.appendChild(playerDiv);
-    });
-
-    // Обновление позиций на доске
-    if (this.board) {
-      this.board.updateAllPlayers(this.gameState.players);
+    async loadQuestions() {
+        // Загружаем вопросы из предоставленных данных
+        this.questions = {
+            matematika: [
+                {question: "Сколько будет 7 + 8?", answer: "15"},
+                {question: "Сколько будет 12 - 5?", answer: "7"},
+                {question: "Сколько будет 6 × 4?", answer: "24"},
+                {question: "Сколько углов у треугольника?", answer: "3"},
+                {question: "Сколько сторон у квадрата?", answer: "4"},
+                {question: "Сколько месяцев в году?", answer: "12"},
+                {question: "Сколько дней в неделе?", answer: "7"},
+                {question: "Сколько часов в сутках?", answer: "24"},
+                {question: "Сколько сантиметров в метре?", answer: "100"},
+                {question: "Сколько граммов в килограмме?", answer: "1000"}
+            ],
+            geografiya: [
+                {question: "Какая столица России?", answer: "Москва"},
+                {question: "Какая столица Франции?", answer: "Париж"},
+                {question: "Сколько материков на Земле?", answer: "6"},
+                {question: "Самый большой материк?", answer: "Евразия"},
+                {question: "Самый большой океан?", answer: "Тихий"},
+                {question: "Самая длинная река в мире?", answer: "Нил"},
+                {question: "Самая высокая гора в мире?", answer: "Эверест"},
+                {question: "Самое глубокое озеро в мире?", answer: "Байкал"},
+                {question: "Самая жаркая пустыня?", answer: "Сахара"},
+                {question: "Северная столица России?", answer: "Петербург"}
+            ],
+            istoriya: [
+                {question: "Кто крестил Русь?", answer: "Владимир"},
+                {question: "Первый русский царь?", answer: "Иван Грозный"},
+                {question: "Кто основал Москву?", answer: "Юрий Долгорукий"},
+                {question: "Кто такой Суворов?", answer: "полководец"},
+                {question: "В каком году была Куликовская битва?", answer: "1380"},
+                {question: "В каком веке жил Пушкин?", answer: "19"},
+                {question: "В каком году человек полетел в космос?", answer: "1961"},
+                {question: "Кто изобрел радио?", answer: "Попов"},
+                {question: "Где находится Эрмитаж?", answer: "Петербург"},
+                {question: "Где стоит памятник Минину и Пожарскому?", answer: "Москва"}
+            ],
+            biologiya: [
+                {question: "Самое большое животное на Земле?", answer: "кит"},
+                {question: "Самое быстрое животное?", answer: "гепард"},
+                {question: "Царь зверей?", answer: "лев"},
+                {question: "Где живут пингвины?", answer: "Антарктида"},
+                {question: "Сколько ног у паука?", answer: "8"},
+                {question: "Из чего растения получают энергию?", answer: "солнце"},
+                {question: "Какой газ выделяют растения?", answer: "кислород"},
+                {question: "Сколько пальцев на руке?", answer: "5"},
+                {question: "Главный орган кровообращения?", answer: "сердце"},
+                {question: "Сколько времен года?", answer: "4"}
+            ],
+            zagadki: [
+                {question: "Рыжая плутовка, хитрая и ловкая", answer: "лиса"},
+                {question: "Косолапый и большой, спит в берлоге он зимой", answer: "медведь"},
+                {question: "Два конца, два кольца, посередине гвоздик", answer: "ножницы"},
+                {question: "Не лает, не кусает, а в дом не пускает", answer: "замок"},
+                {question: "Сидит дед во сто шуб одет, кто его раздевает, тот слезы проливает", answer: "лук"},
+                {question: "Красна девица сидит в темнице, а коса на улице", answer: "морковь"},
+                {question: "Круглое, румяное, я расту на ветке", answer: "яблоко"},
+                {question: "Шумит он в поле и в саду, а в дом не попадет", answer: "ветер"},
+                {question: "Без крыльев летят, без ног бегут, без паруса плывут", answer: "облака"},
+                {question: "Двенадцать братьев друг за другом бродят, друг друга не обходят", answer: "месяцы"}
+            ]
+        };
     }
-  }
 
-  // Отображение сообщения
-  showMessage(message) {
-    const messageDiv = document.createElement('div');
-    messageDiv.style.cssText = `
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: var(--color-surface);
-      border: 2px solid var(--color-primary);
-      border-radius: var(--radius-lg);
-      padding: var(--space-20);
-      font-size: var(--font-size-lg);
-      z-index: 1001;
-      box-shadow: var(--shadow-lg);
-    `;
-    messageDiv.textContent = message;
-    document.body.appendChild(messageDiv);
+    setupEventListeners() {
+        // Главное меню
+        document.getElementById('new-game-btn').addEventListener('click', () => this.showScreen('player-setup-screen'));
+        document.getElementById('settings-btn').addEventListener('click', () => this.showScreen('settings-screen'));
+        document.getElementById('rules-btn').addEventListener('click', () => this.showScreen('rules-screen'));
 
-    setTimeout(() => {
-      messageDiv.remove();
-    }, 2000);
-  }
+        // Настройки
+        document.getElementById('save-settings-btn').addEventListener('click', () => this.saveSettings());
+        document.getElementById('back-to-menu-btn').addEventListener('click', () => this.showScreen('main-menu'));
 
-  // Звуковые эффекты
-  playSound(soundType) {
-    if (!this.settings.soundEnabled) return;
-    
-    // Простая имитация звука через изменение стилей
-    const button = document.querySelector('.btn:hover') || document.querySelector('.btn');
-    if (button) {
-      button.style.transform = 'scale(0.95)';
-      setTimeout(() => {
-        button.style.transform = '';
-      }, 100);
-    }
-  }
+        // Правила
+        document.getElementById('back-from-rules-btn').addEventListener('click', () => this.showScreen('main-menu'));
 
-  // Сохранение настроек
-  saveSettings() {
-    this.settings.soundEnabled = document.getElementById('sound-enabled').checked;
-    this.settings.volume = document.getElementById('volume-slider').value;
-    // Не используем localStorage согласно инструкциям
-  }
-
-  // Загрузка настроек
-  loadSettings() {
-    // Используем значения по умолчанию, не загружаем из localStorage
-    document.getElementById('sound-enabled').checked = this.settings.soundEnabled;
-    document.getElementById('volume-slider').value = this.settings.volume;
-  }
-}
-
-// Класс игрового поля с зигзагообразным расположением
-class GameBoard {
-  constructor() {
-    this.canvas = document.getElementById('game-board');
-    this.ctx = this.canvas.getContext('2d');
-    this.canvas.width = GAME_CONFIG.canvasWidth;
-    this.canvas.height = GAME_CONFIG.canvasHeight;
-    this.cells = this.generateCells();
-    this.draw();
-  }
-
-  // Генерация клеток в зигзагообразном порядке
-  generateCells() {
-    const cells = [];
-    const cellSize = GAME_CONFIG.cellSize;
-    const cols = GAME_CONFIG.cols;
-    const rows = GAME_CONFIG.rows;
-    
-    for (let i = 1; i <= GAME_CONFIG.boardSize; i++) {
-      // Вычисляем ряд и колонку
-      const row = Math.floor((i - 1) / cols);
-      const col = (i - 1) % cols;
-      
-      // Зигзагообразная логика
-      let x, y;
-      if (row % 2 === 0) {
-        // Четный ряд: слева направо
-        x = col * cellSize;
-      } else {
-        // Нечетный ряд: справа налево
-        x = (cols - 1 - col) * cellSize;
-      }
-      
-      // Y координата (переворачиваем, чтобы первый ряд был внизу)
-      y = (rows - 1 - row) * cellSize;
-      
-      let cellType = 'normal';
-      if (GAME_CONFIG.specialCells.jumpUp.includes(i)) cellType = 'jumpUp';
-      else if (GAME_CONFIG.specialCells.jumpDown.includes(i)) cellType = 'jumpDown';
-      
-      cells.push({
-        number: i,
-        x: x,
-        y: y,
-        size: cellSize,
-        type: cellType,
-        row: row
-      });
-    }
-    
-    return cells;
-  }
-
-  // Отрисовка доски
-  draw() {
-    // Фон доски
-    this.ctx.fillStyle = '#87CEEB';
-    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-    
-    this.cells.forEach(cell => {
-      // Цвет клетки в зависимости от типа и ряда
-      let fillColor;
-      if (cell.type === 'jumpUp') {
-        fillColor = '#90EE90'; // Зеленый для прыжков вперед
-      } else if (cell.type === 'jumpDown') {
-        fillColor = '#FFB6C1'; // Розовый для прыжков назад
-      } else {
-        // Альтернативные цвета для четных и нечетных рядов
-        fillColor = cell.row % 2 === 0 ? '#DEB887' : '#F5DEB3';
-      }
-      
-      this.ctx.fillStyle = fillColor;
-      this.ctx.fillRect(cell.x + 1, cell.y + 1, cell.size - 2, cell.size - 2);
-      
-      // Рамка клетки
-      this.ctx.strokeStyle = '#8B4513';
-      this.ctx.lineWidth = 1;
-      this.ctx.strokeRect(cell.x + 1, cell.y + 1, cell.size - 2, cell.size - 2);
-      
-      // Номер клетки
-      this.ctx.fillStyle = '#000';
-      this.ctx.font = `${Math.max(10, cell.size * 0.25)}px Arial`;
-      this.ctx.textAlign = 'center';
-      this.ctx.textBaseline = 'middle';
-      this.ctx.fillText(
-        cell.number,
-        cell.x + cell.size / 2,
-        cell.y + cell.size / 2
-      );
-    });
-  }
-
-  // Анимация перемещения игрока
-  animatePlayerMove(playerId, fromPosition, toPosition) {
-    if (fromPosition === toPosition) return;
-    
-    const fromCell = this.cells[fromPosition] || this.cells[0];
-    const toCell = this.cells[toPosition - 1] || this.cells[GAME_CONFIG.boardSize - 1];
-    
-    let progress = 0;
-    const animate = () => {
-      progress += 0.1;
-      if (progress >= 1) {
-        progress = 1;
-      }
-      
-      this.draw();
-      this.updateAllPlayers(game.gameState.players, playerId, {
-        x: fromCell.x + (toCell.x - fromCell.x) * progress,
-        y: fromCell.y + (toCell.y - fromCell.y) * progress,
-        size: fromCell.size
-      });
-      
-      if (progress < 1) {
-        requestAnimationFrame(animate);
-      }
-    };
-    
-    animate();
-  }
-
-  // Обновление позиции игрока
-  updatePlayerPosition(playerId, position) {
-    this.draw();
-    this.updateAllPlayers(game.gameState.players);
-  }
-
-  // Обновление всех игроков
-  updateAllPlayers(players, animatingPlayerId = -1, animatingPosition = null) {
-    players.forEach((player, index) => {
-      let cell;
-      if (index === animatingPlayerId && animatingPosition) {
-        cell = animatingPosition;
-      } else {
-        cell = this.cells[Math.max(0, player.position - 1)] || this.cells[0];
-      }
-      
-      this.drawPlayer(player, cell, index);
-    });
-  }
-
-  // Отрисовка игрока
-  drawPlayer(player, cell, playerId) {
-    const offsetX = (playerId % 2) * 12 - 6;
-    const offsetY = Math.floor(playerId / 2) * 12 - 6;
-    
-    this.ctx.fillStyle = player.color;
-    this.ctx.beginPath();
-    this.ctx.arc(
-      cell.x + cell.size / 2 + offsetX,
-      cell.y + cell.size / 2 + offsetY,
-      8,
-      0,
-      2 * Math.PI
-    );
-    this.ctx.fill();
-    
-    // Рамка игрока
-    this.ctx.strokeStyle = '#000';
-    this.ctx.lineWidth = 2;
-    this.ctx.stroke();
-  }
-}
-
-// Система карточек
-class CardSystem {
-  constructor() {
-    this.currentCard = null;
-    this.currentPlayer = null;
-  }
-
-  showCard(player) {
-    this.currentPlayer = player;
-    this.currentCard = CARDS[Math.floor(Math.random() * CARDS.length)];
-    
-    const modal = document.getElementById('card-modal');
-    const title = document.getElementById('card-title');
-    const type = document.getElementById('card-type');
-    const question = document.getElementById('card-question');
-    const options = document.getElementById('card-options');
-    
-    title.textContent = this.getCardTypeTitle(this.currentCard.type);
-    type.textContent = this.getCardTypeTitle(this.currentCard.type);
-    type.className = `status status--${this.getCardTypeClass(this.currentCard.type)}`;
-    question.textContent = this.currentCard.question;
-    
-    options.innerHTML = '';
-    
-    if (this.currentCard.options) {
-      // Варианты ответов
-      this.currentCard.options.forEach(option => {
-        const button = document.createElement('button');
-        button.className = 'option-button';
-        button.textContent = option;
-        button.addEventListener('click', () => {
-          document.querySelectorAll('.option-button').forEach(b => b.classList.remove('selected'));
-          button.classList.add('selected');
+        // Выбор игроков
+        document.querySelectorAll('.player-count-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => this.selectPlayerCount(parseInt(e.target.dataset.players)));
         });
-        options.appendChild(button);
-      });
-    } else {
-      // Поле ввода для загадок
-      const input = document.createElement('input');
-      input.type = 'text';
-      input.className = 'form-control';
-      input.placeholder = 'Введите ответ...';
-      input.id = 'card-answer-input';
-      options.appendChild(input);
-    }
-    
-    modal.classList.remove('hidden');
-  }
+        document.getElementById('back-from-setup-btn').addEventListener('click', () => this.showScreen('main-menu'));
 
-  submitAnswer() {
-    let userAnswer = '';
-    
-    if (this.currentCard.options) {
-      const selected = document.querySelector('.option-button.selected');
-      if (!selected) return;
-      userAnswer = selected.textContent;
-    } else {
-      const input = document.getElementById('card-answer-input');
-      if (!input) return;
-      userAnswer = input.value.trim();
-    }
-    
-    const isCorrect = userAnswer.toLowerCase() === this.currentCard.answer.toLowerCase();
-    
-    this.handleAnswer(isCorrect);
-    this.hideCard();
-  }
+        // НОВЫЙ: Ввод имен игроков
+        document.getElementById('start-game-btn').addEventListener('click', () => this.startGameWithNames());
+        document.getElementById('back-from-names-btn').addEventListener('click', () => this.showScreen('player-setup-screen'));
 
-  handleAnswer(isCorrect) {
-    if (isCorrect) {
-      game.playSound('correct');
-      game.showMessage(`✅ Правильно! ${this.currentPlayer.name} продолжает игру.`);
-    } else {
-      game.playSound('wrong');
-      game.showMessage(`❌ Неправильно! ${this.currentPlayer.name} пропустит следующий ход.`);
-      this.currentPlayer.skipNextTurn = true;
-    }
-    
-    // Проверка победы
-    if (this.currentPlayer.position >= GAME_CONFIG.boardSize) {
-      setTimeout(() => game.endGame(), 1000);
-    } else {
-      setTimeout(() => game.nextTurn(), 2000);
-    }
-  }
+        // Игра
+        document.getElementById('roll-dice-btn').addEventListener('click', () => this.rollDice());
+        document.getElementById('exit-game-btn').addEventListener('click', () => this.exitGame());
 
-  hideCard() {
-    document.getElementById('card-modal').classList.add('hidden');
-  }
+        // Модальные окна
+        document.getElementById('submit-answer-btn').addEventListener('click', () => this.submitAnswer());
+        document.getElementById('continue-game-btn').addEventListener('click', () => this.continueGame());
+        document.getElementById('new-game-from-victory-btn').addEventListener('click', () => this.showScreen('player-setup-screen'));
+        document.getElementById('menu-from-victory-btn').addEventListener('click', () => this.showScreen('main-menu'));
 
-  getCardTypeTitle(type) {
-    switch (type) {
-      case 'math': return 'Математика';
-      case 'riddle': return 'Загадка';
-      case 'knowledge': return 'Эрудиция';
-      default: return 'Задание';
+        // Enter для отправки ответа
+        document.getElementById('answer-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') this.submitAnswer();
+        });
     }
-  }
 
-  getCardTypeClass(type) {
-    switch (type) {
-      case 'math': return 'info';
-      case 'riddle': return 'warning';
-      case 'knowledge': return 'success';
-      default: return 'info';
+    showScreen(screenId) {
+        document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
+        document.getElementById(screenId).classList.add('active');
+        this.currentScreen = screenId;
+
+        if (screenId === 'settings-screen') {
+            this.updateSettingsUI();
+        }
     }
-  }
+
+    updateSettingsUI() {
+        Object.keys(this.activeThemes).forEach(theme => {
+            document.getElementById(theme).checked = this.activeThemes[theme];
+        });
+    }
+
+    saveSettings() {
+        Object.keys(this.activeThemes).forEach(theme => {
+            this.activeThemes[theme] = document.getElementById(theme).checked;
+        });
+        
+        // Проверяем, что хотя бы одна тема выбрана
+        const hasActiveTheme = Object.values(this.activeThemes).some(active => active);
+        if (!hasActiveTheme) {
+            alert('Выберите хотя бы одну тему!');
+            return;
+        }
+
+        this.showScreen('main-menu');
+    }
+
+    loadSettings() {
+        // Настройки по умолчанию уже установлены в конструкторе
+    }
+
+    // НОВЫЙ МЕТОД: Выбор количества игроков и переход к вводу имен
+    selectPlayerCount(playerCount) {
+        const hasActiveTheme = Object.values(this.activeThemes).some(active => active);
+        if (!hasActiveTheme) {
+            alert('Сначала выберите темы в настройках!');
+            return;
+        }
+
+        this.selectedPlayerCount = playerCount;
+        this.setupNamesForm();
+        this.showScreen('names-setup-screen');
+    }
+
+    // НОВЫЙ МЕТОД: Создание формы для ввода имен
+    setupNamesForm() {
+        const form = document.getElementById('player-names-form');
+        form.innerHTML = '';
+
+        for (let i = 0; i < this.selectedPlayerCount; i++) {
+            const playerDiv = document.createElement('div');
+            playerDiv.className = 'player-name-input';
+            
+            playerDiv.innerHTML = `
+                <div class="player-color-indicator" style="background-color: ${this.gameSettings.playerColors[i]}"></div>
+                <div class="player-name-field">
+                    <label class="form-label">Имя игрока ${i + 1}</label>
+                    <input type="text" class="form-control player-name-input-field" 
+                           placeholder="Игрок ${i + 1}" 
+                           maxlength="15"
+                           data-player-index="${i}">
+                </div>
+            `;
+            
+            form.appendChild(playerDiv);
+        }
+
+        // Добавляем обработчики для валидации
+        const nameInputs = form.querySelectorAll('.player-name-input-field');
+        nameInputs.forEach(input => {
+            input.addEventListener('input', (e) => this.validateNameInput(e.target));
+        });
+
+        // Фокус на первое поле
+        if (nameInputs.length > 0) {
+            nameInputs[0].focus();
+        }
+    }
+
+    // НОВЫЙ МЕТОД: Валидация ввода имени
+    validateNameInput(input) {
+        const value = input.value.trim();
+        if (value.length > 15) {
+            input.value = value.substring(0, 15);
+        }
+    }
+
+    // НОВЫЙ МЕТОД: Сбор имен и старт игры
+    startGameWithNames() {
+        const nameInputs = document.querySelectorAll('.player-name-input-field');
+        this.playerNames = [];
+
+        nameInputs.forEach((input, index) => {
+            const name = input.value.trim();
+            this.playerNames.push(name || `Игрок ${index + 1}`);
+        });
+
+        this.startGame(this.selectedPlayerCount);
+    }
+
+    startGame(playerCount) {
+        this.gameState = {
+            players: this.createPlayers(playerCount),
+            currentPlayerIndex: 0,
+            gameBoard: this.createGameBoard(),
+            isGameActive: true,
+            skipNextTurn: {}
+        };
+
+        this.showScreen('game-screen');
+        this.setupCanvas();
+        this.updateUI();
+    }
+
+    // МОДИФИЦИРОВАННЫЙ МЕТОД: Создание игроков с введенными именами
+    createPlayers(count) {
+        const players = [];
+        const botNames = ['Бот 1', 'Бот 2', 'Бот 3'];
+        
+        for (let i = 0; i < count; i++) {
+            players.push({
+                id: i,
+                name: this.playerNames[i] || `Игрок ${i + 1}`,
+                color: this.gameSettings.playerColors[i],
+                position: 0,
+                isBot: false
+            });
+        }
+
+        // Добавляем ботов если играет 1 игрок
+        if (count === 1) {
+            const botCount = Math.floor(Math.random() * 3) + 1; // 1-3 бота
+            for (let i = 0; i < botCount; i++) {
+                players.push({
+                    id: count + i,
+                    name: botNames[i],
+                    color: this.gameSettings.playerColors[count + i],
+                    position: 0,
+                    isBot: true
+                });
+            }
+        }
+
+        return players;
+    }
+
+    createGameBoard() {
+        const board = [];
+        const totalCells = this.gameSettings.rows * this.gameSettings.cols;
+        
+        for (let i = 0; i <= totalCells; i++) {
+            const coords = this.getCellCoordinates(i);
+            board.push({
+                id: i,
+                x: coords.x,
+                y: coords.y,
+                isJump: this.jumpCells.hasOwnProperty(i),
+                jumpInfo: this.jumpCells[i] || null
+            });
+        }
+        
+        return board;
+    }
+
+    getCellCoordinates(cellIndex) {
+        if (cellIndex === 0) return { x: -1, y: -1 }; // Старт вне поля
+
+        const adjustedIndex = cellIndex - 1;
+        const row = Math.floor(adjustedIndex / this.gameSettings.cols);
+        let col = adjustedIndex % this.gameSettings.cols;
+        
+        // Зигзаг: четные ряды слева направо, нечетные справа налево
+        if (row % 2 === 1) {
+            col = this.gameSettings.cols - 1 - col;
+        }
+        
+        return { x: col, y: this.gameSettings.rows - 1 - row };
+    }
+
+    setupCanvas() {
+        this.canvas = document.getElementById('game-board');
+        this.ctx = this.canvas.getContext('2d');
+        
+        const canvasWidth = this.gameSettings.cols * (this.gameSettings.cellSize + this.gameSettings.cellPadding) - this.gameSettings.cellPadding;
+        const canvasHeight = this.gameSettings.rows * (this.gameSettings.cellSize + this.gameSettings.cellPadding) - this.gameSettings.cellPadding;
+        
+        this.canvas.width = canvasWidth;
+        this.canvas.height = canvasHeight;
+        
+        this.drawBoard();
+    }
+
+    drawBoard() {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // Рисуем клетки
+        for (let i = 1; i <= 120; i++) {
+            const coords = this.getCellCoordinates(i);
+            const x = coords.x * (this.gameSettings.cellSize + this.gameSettings.cellPadding);
+            const y = coords.y * (this.gameSettings.cellSize + this.gameSettings.cellPadding);
+            
+            // Определяем цвет клетки
+            let cellColor = '#f0f0f0';
+            if (this.jumpCells[i]) {
+                cellColor = this.jumpCells[i].type === 'up' ? '#4CAF50' : '#f44336';
+            }
+            
+            // Рисуем клетку
+            this.ctx.fillStyle = cellColor;
+            this.ctx.fillRect(x, y, this.gameSettings.cellSize, this.gameSettings.cellSize);
+            
+            // Рисуем границу
+            this.ctx.strokeStyle = '#333';
+            this.ctx.lineWidth = 1;
+            this.ctx.strokeRect(x, y, this.gameSettings.cellSize, this.gameSettings.cellSize);
+            
+            // Рисуем номер клетки
+            this.ctx.fillStyle = '#333';
+            this.ctx.font = '12px Arial';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText(i.toString(), x + this.gameSettings.cellSize / 2, y + 15);
+            
+            // Рисуем стрелки для прыжков
+            if (this.jumpCells[i]) {
+                this.ctx.fillStyle = 'white';
+                this.ctx.font = 'bold 20px Arial';
+                const arrow = this.jumpCells[i].type === 'up' ? '↑' : '↓';
+                this.ctx.fillText(arrow, x + this.gameSettings.cellSize / 2, y + this.gameSettings.cellSize / 2 + 7);
+            }
+        }
+        
+        // Рисуем игроков
+        this.drawPlayers();
+    }
+
+    drawPlayers() {
+        this.gameState.players.forEach((player, index) => {
+            if (player.position > 0) {
+                const coords = this.getCellCoordinates(player.position);
+                const baseX = coords.x * (this.gameSettings.cellSize + this.gameSettings.cellPadding);
+                const baseY = coords.y * (this.gameSettings.cellSize + this.gameSettings.cellPadding);
+                
+                // Смещение для нескольких игроков на одной клетке
+                const offsetX = (index % 2) * 15 + 10;
+                const offsetY = Math.floor(index / 2) * 15 + 25;
+                
+                this.ctx.fillStyle = player.color;
+                this.ctx.beginPath();
+                this.ctx.arc(baseX + offsetX, baseY + offsetY, 8, 0, 2 * Math.PI);
+                this.ctx.fill();
+                
+                this.ctx.strokeStyle = '#333';
+                this.ctx.lineWidth = 2;
+                this.ctx.stroke();
+            }
+        });
+    }
+
+    updateUI() {
+        const currentPlayer = this.gameState.players[this.gameState.currentPlayerIndex];
+        
+        // Обновляем информацию о текущем игроке
+        document.querySelector('.player-indicator').style.backgroundColor = currentPlayer.color;
+        document.querySelector('.player-name').textContent = currentPlayer.name;
+        
+        // Обновляем список игроков
+        const playersList = document.getElementById('players-list');
+        playersList.innerHTML = '';
+        
+        this.gameState.players.forEach((player, index) => {
+            const playerDiv = document.createElement('div');
+            playerDiv.className = 'player-info';
+            if (index === this.gameState.currentPlayerIndex) {
+                playerDiv.classList.add('current');
+            }
+            if (this.gameState.skipNextTurn[player.id]) {
+                playerDiv.classList.add('skipped');
+            }
+            
+            playerDiv.innerHTML = `
+                <div class="player-color" style="background-color: ${player.color}"></div>
+                <div class="player-name">${player.name}</div>
+                <div class="player-position">Клетка: ${player.position}</div>
+            `;
+            
+            playersList.appendChild(playerDiv);
+        });
+        
+        // Включаем/выключаем кнопку кубика
+        const rollBtn = document.getElementById('roll-dice-btn');
+        rollBtn.disabled = !this.gameState.isGameActive;
+    }
+
+    rollDice() {
+        const currentPlayer = this.gameState.players[this.gameState.currentPlayerIndex];
+        
+        // Проверяем, нужно ли пропустить ход
+        if (this.gameState.skipNextTurn[currentPlayer.id]) {
+            delete this.gameState.skipNextTurn[currentPlayer.id];
+            this.nextPlayer();
+            return;
+        }
+        
+        const diceResult = Math.floor(Math.random() * 6) + 1;
+        document.querySelector('.dice-result').textContent = diceResult;
+        
+        // Перемещаем игрока
+        this.movePlayer(currentPlayer, diceResult);
+    }
+
+    movePlayer(player, steps) {
+        const newPosition = Math.min(player.position + steps, 120);
+        player.position = newPosition;
+        
+        // Проверяем победу
+        if (newPosition >= 120) {
+            this.endGame(player);
+            return;
+        }
+        
+        // Проверяем прыжки
+        if (this.jumpCells[newPosition]) {
+            setTimeout(() => {
+                player.position = this.jumpCells[newPosition].target;
+                this.drawBoard();
+                this.updateUI();
+                
+                // Проверяем победу после прыжка
+                if (player.position >= 120) {
+                    this.endGame(player);
+                } else {
+                    this.nextPlayer();
+                }
+            }, 1000);
+        } else {
+            // Задаем вопрос
+            this.askQuestion(player);
+        }
+        
+        this.drawBoard();
+        this.updateUI();
+    }
+
+    askQuestion(player) {
+        if (player.isBot) {
+            // Бот отвечает автоматически
+            const isCorrect = Math.random() > 0.3; // 70% вероятность правильного ответа
+            setTimeout(() => {
+                if (!isCorrect) {
+                    this.gameState.skipNextTurn[player.id] = true;
+                }
+                this.nextPlayer();
+            }, 1000);
+            return;
+        }
+        
+        const question = this.getRandomQuestion();
+        if (!question) {
+            this.nextPlayer();
+            return;
+        }
+        
+        this.currentQuestion = question;
+        
+        // Показываем модальное окно с вопросом
+        document.querySelector('.question-theme').textContent = this.getThemeName(question.theme);
+        document.querySelector('.question-text').textContent = question.question;
+        document.getElementById('answer-input').value = '';
+        document.getElementById('question-modal').classList.add('active');
+        document.getElementById('answer-input').focus();
+    }
+
+    getRandomQuestion() {
+        const activeThemeNames = Object.keys(this.activeThemes).filter(theme => this.activeThemes[theme]);
+        if (activeThemeNames.length === 0) return null;
+        
+        const randomTheme = activeThemeNames[Math.floor(Math.random() * activeThemeNames.length)];
+        const themeQuestions = this.questions[randomTheme];
+        const randomQuestion = themeQuestions[Math.floor(Math.random() * themeQuestions.length)];
+        
+        return {
+            ...randomQuestion,
+            theme: randomTheme
+        };
+    }
+
+    getThemeName(themeKey) {
+        const themeNames = {
+            matematika: '📊 Математика',
+            geografiya: '🌍 География',
+            istoriya: '📜 История',
+            biologiya: '🧬 Биология',
+            zagadki: '🧩 Загадки'
+        };
+        return themeNames[themeKey] || themeKey;
+    }
+
+    submitAnswer() {
+        const userAnswer = document.getElementById('answer-input').value.trim().toLowerCase();
+        const correctAnswer = this.currentQuestion.answer.toLowerCase();
+        
+        const isCorrect = userAnswer === correctAnswer;
+        
+        // Скрываем модальное окно с вопросом
+        document.getElementById('question-modal').classList.remove('active');
+        
+        // Показываем результат
+        this.showResult(isCorrect, this.currentQuestion.answer);
+    }
+
+    showResult(isCorrect, correctAnswer) {
+        const resultModal = document.getElementById('result-modal');
+        const resultIcon = document.querySelector('.result-icon');
+        const resultText = document.querySelector('.result-text');
+        const correctAnswerDiv = document.querySelector('.correct-answer');
+        
+        if (isCorrect) {
+            resultIcon.textContent = '✅';
+            resultText.textContent = 'Правильно!';
+            resultText.style.color = '#4CAF50';
+            correctAnswerDiv.style.display = 'none';
+        } else {
+            resultIcon.textContent = '❌';
+            resultText.textContent = 'Неправильно!';
+            resultText.style.color = '#f44336';
+            correctAnswerDiv.textContent = `Правильный ответ: ${correctAnswer}`;
+            correctAnswerDiv.style.display = 'block';
+            
+            // Игрок пропускает следующий ход
+            const currentPlayer = this.gameState.players[this.gameState.currentPlayerIndex];
+            this.gameState.skipNextTurn[currentPlayer.id] = true;
+        }
+        
+        resultModal.classList.add('active');
+    }
+
+    continueGame() {
+        document.getElementById('result-modal').classList.remove('active');
+        this.nextPlayer();
+    }
+
+    nextPlayer() {
+        this.gameState.currentPlayerIndex = (this.gameState.currentPlayerIndex + 1) % this.gameState.players.length;
+        this.updateUI();
+        
+        // Если следующий игрок - бот, делаем его ход автоматически
+        const nextPlayer = this.gameState.players[this.gameState.currentPlayerIndex];
+        if (nextPlayer.isBot && this.gameState.isGameActive) {
+            setTimeout(() => {
+                this.rollDice();
+            }, 1500);
+        }
+    }
+
+    endGame(winner) {
+        this.gameState.isGameActive = false;
+        
+        // Показываем модальное окно победы
+        document.querySelector('.winner-color').style.backgroundColor = winner.color;
+        document.querySelector('.winner-text').textContent = `${winner.name} победил!`;
+        document.getElementById('victory-modal').classList.add('active');
+    }
+
+    exitGame() {
+        if (confirm('Вы уверены, что хотите выйти из игры?')) {
+            this.showScreen('main-menu');
+        }
+    }
 }
 
-// Система ботов
-class BotSystem {
-  makeMove(bot, gameState) {
-    // Простая стратегия для демонстрации
-    switch (bot.botDifficulty) {
-      case 'easy':
-        // Случайная стратегия
-        break;
-      case 'medium':
-        // Базовая стратегия
-        this.mediumStrategy(bot, gameState);
-        break;
-      case 'hard':
-        // Продвинутая стратегия
-        this.hardStrategy(bot, gameState);
-        break;
-    }
-  }
-
-  mediumStrategy(bot, gameState) {
-    // Анализ ближайших клеток
-    const position = bot.position;
-    const dangerousCells = GAME_CONFIG.specialCells.jumpDown;
-    
-    // Простой анализ: избегать красных клеток если возможно
-    for (let i = 1; i <= 6; i++) {
-      if (dangerousCells.includes(position + i)) {
-        // Бот "знает" о опасности и может корректировать стратегию
-        break;
-      }
-    }
-  }
-
-  hardStrategy(bot, gameState) {
-    // Продвинутый анализ позиций всех игроков
-    const otherPlayers = gameState.players.filter(p => p.id !== bot.id);
-    const leadingPlayer = otherPlayers.reduce((leader, player) => 
-      player.position > leader.position ? player : leader
-    );
-    
-    // Стратегия догонялки
-    if (bot.position < leadingPlayer.position - 10) {
-      // Агрессивная игра для догона
-    }
-  }
-}
-
-// Инициализация игры
-let game;
+// Запуск игры
 document.addEventListener('DOMContentLoaded', () => {
-  game = new AdventureGame();
+    new AdventureGame();
 });
