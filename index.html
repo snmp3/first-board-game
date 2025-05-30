@@ -409,12 +409,11 @@
                         <label for="player-name">Имя игрока:</label>
                         <input type="text" id="player-name" placeholder="Введите имя" autocomplete="off">
                     </div>
-                    <button class="btn" id="add-player" 
-                            onclick="window.gameActions?.addPlayer()">
+                    <!-- УБИРАЕМ onclick атрибуты - будут только addEventListener обработчики -->
+                    <button class="btn" id="add-player">
                         Добавить игрока
                     </button>
-                    <button class="btn" id="add-bot" 
-                            onclick="window.gameActions?.addBot()">
+                    <button class="btn" id="add-bot">
                         Добавить бота
                     </button>
                 </div>
@@ -454,12 +453,11 @@
             </div>
 
             <div style="text-align: center;">
-                <button class="btn" id="start-game" disabled 
-                        onclick="window.gameActions?.startGame()">
+                <!-- УБИРАЕМ onclick атрибуты -->
+                <button class="btn" id="start-game" disabled>
                     Начать игру
                 </button>
-                <button class="btn" id="reset-game" 
-                        onclick="window.gameActions?.resetGame()">
+                <button class="btn" id="reset-game">
                     Сбросить всё
                 </button>
             </div>
@@ -546,4 +544,36 @@
     
     <!-- Fallback скрипт для критических ошибок -->
     <script>
-        //
+        // Показываем отладочную информацию в разработке
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            setTimeout(() => {
+                const debugElement = document.getElementById('debug-info');
+                if (debugElement) {
+                    debugElement.classList.add('active');
+                }
+            }, 1000);
+        }
+
+        // Обработка ошибок модулей
+        window.addEventListener('error', (e) => {
+            if (e.message.includes('module')) {
+                console.error('Ошибка загрузки модуля:', e);
+                const errorElement = document.getElementById('error-display');
+                if (errorElement) {
+                    errorElement.style.display = 'block';
+                    errorElement.innerHTML = `
+                        <h3>Ошибка загрузки модулей</h3>
+                        <p>Убедитесь, что:</p>
+                        <ul style="text-align: left;">
+                            <li>Игра запускается через веб-сервер (http://)</li>
+                            <li>Все файлы модулей находятся в правильных папках</li>
+                            <li>Нет блокировки CORS в браузере</li>
+                        </ul>
+                        <button onclick="location.reload()" class="btn">Перезагрузить</button>
+                    `;
+                }
+            }
+        });
+    </script>
+</body>
+</html>
