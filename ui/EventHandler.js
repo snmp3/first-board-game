@@ -95,14 +95,24 @@ export class EventHandler {
         // Добавление игрока
         this.addEventHandler('add-player', 'click', (e) => {
             e.preventDefault();
-            this.log('Клик по кнопке добавления игрока');
+            e.stopPropagation(); // Останавливаем всплытие события
+            
+            this.log('🔥 Клик по кнопке добавления игрока (EventHandler)');
             
             const nameInput = document.getElementById('player-name');
-            const name = nameInput?.value.trim();
+            if (!nameInput) {
+                this.error('Поле ввода имени игрока не найдено');
+                return;
+            }
             
-            if (!name) {
+            // ИСПРАВЛЕННАЯ логика получения значения
+            const name = nameInput.value ? nameInput.value.trim() : '';
+            this.log(`Получено имя из поля: "${name}" (длина: ${name.length})`);
+            
+            if (!name || name.length === 0) {
+                this.log('❌ Имя пустое, показываем предупреждение');
                 alert('Введите имя игрока!');
-                nameInput?.focus();
+                nameInput.focus();
                 return;
             }
             
@@ -112,10 +122,15 @@ export class EventHandler {
             }
             
             try {
-                this.game.addPlayer(name, false);
-                nameInput.value = '';
-                this.updateStartButtonState();
-                this.log(`Игрок "${name}" добавлен`);
+                const addedPlayer = this.game.addPlayer(name, false);
+                if (addedPlayer) {
+                    nameInput.value = ''; // Очищаем поле только при успешном добавлении
+                    nameInput.focus();
+                    this.updateStartButtonState();
+                    this.log(`✅ Игрок "${name}" добавлен успешно`);
+                } else {
+                    this.log(`❌ Не удалось добавить игрока "${name}"`);
+                }
             } catch (error) {
                 this.error('Ошибка добавления игрока:', error);
                 alert('Ошибка добавления игрока');
@@ -125,13 +140,26 @@ export class EventHandler {
         // Добавление бота
         this.addEventHandler('add-bot', 'click', (e) => {
             e.preventDefault();
-            this.log('Клик по кнопке добавления бота');
+            e.stopPropagation(); // Останавливаем всплытие события
+            
+            this.log('🤖 Клик по кнопке добавления бота (EventHandler)');
             
             const botNameInput = document.getElementById('bot-name');
             const difficultySelect = document.getElementById('bot-difficulty');
             
-            const name = botNameInput?.value.trim() || 'Бот';
-            const difficulty = difficultySelect?.value || 'medium';
+            if (!difficultySelect) {
+                this.error('Селект сложности бота не найден');
+                return;
+            }
+            
+            // ИСПРАВЛЕННАЯ логика получения значений
+            const botName = botNameInput && botNameInput.value ? botNameInput.value.trim() : '';
+            const difficulty = difficultySelect.value || 'medium';
+            
+            // Если имя бота не введено, используем случайное имя
+            const finalBotName = botName || this.generateBotName();
+            
+            this.log(`Данные бота: имя="${finalBotName}", сложность="${difficulty}"`);
             
             if (this.game.gameState.players.length >= 4) {
                 alert('Максимум 4 игрока!');
@@ -139,10 +167,16 @@ export class EventHandler {
             }
             
             try {
-                this.game.addPlayer(name, true, difficulty);
-                if (botNameInput) botNameInput.value = '';
-                this.updateStartButtonState();
-                this.log(`Бот "${name}" (${difficulty}) добавлен`);
+                const addedBot = this.game.addPlayer(finalBotName, true, difficulty);
+                if (addedBot) {
+                    if (botNameInput) {
+                        botNameInput.value = ''; // Очищаем поле только при успешном добавлении
+                    }
+                    this.updateStartButtonState();
+                    this.log(`✅ Бот "${finalBotName}" (${difficulty}) добавлен успешно`);
+                } else {
+                    this.log(`❌ Не удалось добавить бота "${finalBotName}"`);
+                }
             } catch (error) {
                 this.error('Ошибка добавления бота:', error);
                 alert('Ошибка добавления бота');
@@ -152,7 +186,9 @@ export class EventHandler {
         // Начало игры
         this.addEventHandler('start-game', 'click', (e) => {
             e.preventDefault();
-            this.log('Клик по кнопке начала игры');
+            e.stopPropagation();
+            
+            this.log('🎮 Клик по кнопке начала игры (EventHandler)');
             
             if (this.game.gameState.players.length === 0) {
                 alert('Добавьте игроков перед началом игры!');
@@ -168,7 +204,7 @@ export class EventHandler {
             try {
                 this.game.updateThemes(selectedThemes);
                 this.game.startGame();
-                this.log('Игра начата');
+                this.log('✅ Игра начата');
             } catch (error) {
                 this.error('Ошибка начала игры:', error);
                 alert('Ошибка начала игры');
@@ -178,13 +214,15 @@ export class EventHandler {
         // Сброс игры
         this.addEventHandler('reset-game', 'click', (e) => {
             e.preventDefault();
-            this.log('Клик по кнопке сброса игры');
+            e.stopPropagation();
+            
+            this.log('🔄 Клик по кнопке сброса игры (EventHandler)');
             
             if (confirm('Вы уверены, что хотите сбросить всё?')) {
                 try {
                     this.game.resetGame();
                     this.updateStartButtonState();
-                    this.log('Игра сброшена');
+                    this.log('✅ Игра сброшена');
                 } catch (error) {
                     this.error('Ошибка сброса игры:', error);
                     alert('Ошибка сброса игры');
@@ -198,6 +236,7 @@ export class EventHandler {
                 e.preventDefault();
                 const addButton = document.getElementById('add-player');
                 if (addButton) {
+                    this.log('Enter в поле имени игрока, имитируем клик');
                     addButton.click();
                 }
             }
@@ -209,10 +248,21 @@ export class EventHandler {
                 e.preventDefault();
                 const addBotButton = document.getElementById('add-bot');
                 if (addBotButton) {
+                    this.log('Enter в поле имени бота, имитируем клик');
                     addBotButton.click();
                 }
             }
         });
+    }
+
+    // Генерация случайного имени для бота
+    generateBotName() {
+        const botNames = [
+            'Робот', 'Андроид', 'Киборг', 'Дроид', 'Бот-2000',
+            'Умник', 'Мыслитель', 'Вычислитель', 'Логик', 'Аналитик'
+        ];
+        const randomIndex = Math.floor(Math.random() * botNames.length);
+        return botNames[randomIndex];
     }
 
     setupGameEvents() {
@@ -221,7 +271,7 @@ export class EventHandler {
         // Бросок кубика
         this.addEventHandler('roll-dice', 'click', (e) => {
             e.preventDefault();
-            this.log('Бросок кубика');
+            this.log('🎲 Бросок кубика');
             try {
                 this.game.rollDice();
             } catch (error) {
@@ -232,7 +282,7 @@ export class EventHandler {
         // Движение игрока
         this.addEventHandler('move-player', 'click', (e) => {
             e.preventDefault();
-            this.log('Движение игрока');
+            this.log('🚶 Движение игрока');
             try {
                 this.game.moveCurrentPlayer();
             } catch (error) {
@@ -243,7 +293,7 @@ export class EventHandler {
         // Возврат в главное меню
         this.addEventHandler('back-to-menu', 'click', (e) => {
             e.preventDefault();
-            this.log('Возврат в главное меню');
+            this.log('🏠 Возврат в главное меню');
             
             if (confirm('Вы уверены, что хотите вернуться в главное меню?')) {
                 try {
@@ -306,7 +356,7 @@ export class EventHandler {
         const themeChangeHandler = (e) => {
             if (e.target.type === 'checkbox' && e.target.id.startsWith('theme-')) {
                 const themeId = e.target.value;
-                this.log(`Изменена тема: ${themeId} (${e.target.checked ? 'включена' : 'отключена'})`);
+                this.log(`🎯 Изменена тема: ${themeId} (${e.target.checked ? 'включена' : 'отключена'})`);
                 this.updateStartButtonState();
             }
         };
@@ -314,7 +364,7 @@ export class EventHandler {
         themesContainer.addEventListener('change', themeChangeHandler);
         this.boundHandlers.set('themes-container-change', themeChangeHandler);
         
-        this.log('Настроено делегирование событий для чекбоксов тем');
+        this.log('✅ Настроено делегирование событий для чекбоксов тем');
     }
 
     getSelectedThemes() {
@@ -368,18 +418,9 @@ export class EventHandler {
             this.removeEventHandler(elementId, eventType);
         }
 
-        // Обертываем обработчик для отладки
-        const debugHandler = (event) => {
-            this.log(`🖱️ Событие ${eventType} на ${elementId}`);
-            try {
-                handler(event);
-            } catch (error) {
-                this.error(`Ошибка в обработчике ${elementId}:`, error);
-            }
-        };
-
-        this.boundHandlers.set(key, debugHandler);
-        element.addEventListener(eventType, debugHandler);
+        // НЕ оборачиваем в дополнительную функцию для отладки - используем handler напрямую
+        this.boundHandlers.set(key, handler);
+        element.addEventListener(eventType, handler);
         
         this.log(`✅ Обработчик ${eventType} добавлен для ${elementId}`);
         return true;
