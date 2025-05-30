@@ -53,17 +53,44 @@
             font-size: 16px;
             margin: 5px;
             transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
         }
 
-        .btn:hover {
+        .btn:hover:not(:disabled) {
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .btn:active:not(:disabled) {
+            transform: translateY(0);
         }
 
         .btn:disabled {
             background: #bdc3c7;
             cursor: not-allowed;
             transform: none;
+            box-shadow: none;
+        }
+
+        /* Анимация загрузки кнопки */
+        .btn.loading::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            margin: -10px 0 0 -10px;
+            border: 2px solid transparent;
+            border-top: 2px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
         .players-setup {
@@ -97,6 +124,13 @@
             border: 2px solid #dee2e6;
             border-radius: 5px;
             font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        .input-group input:focus, .input-group select:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
         }
 
         .themes-selection {
@@ -110,11 +144,19 @@
             display: flex;
             align-items: center;
             margin-bottom: 10px;
+            cursor: pointer;
+        }
+
+        .theme-checkbox:hover {
+            background: rgba(52, 152, 219, 0.1);
+            border-radius: 5px;
+            padding: 5px;
         }
 
         .theme-checkbox input {
             margin-right: 10px;
             transform: scale(1.2);
+            cursor: pointer;
         }
 
         .players-list {
@@ -122,6 +164,7 @@
             padding: 15px;
             border-radius: 10px;
             margin-bottom: 20px;
+            min-height: 60px;
         }
 
         .player-item {
@@ -133,6 +176,25 @@
             background: white;
             border-radius: 5px;
             border-left: 4px solid #3498db;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .no-players {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+            padding: 20px;
         }
 
         .game-area {
@@ -182,6 +244,12 @@
             background: white;
             border-radius: 5px;
             margin-bottom: 15px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
         }
 
         #dice-result {
@@ -197,6 +265,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            border: 2px solid #eee;
         }
 
         .modal {
@@ -257,6 +326,9 @@
             text-align: center;
             padding: 20px;
             color: #666;
+            background: white;
+            border-radius: 10px;
+            margin-bottom: 20px;
         }
 
         .loading-indicator.active {
@@ -274,11 +346,6 @@
             margin-right: 10px;
         }
 
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
         .error-message {
             background: #f8d7da;
             color: #721c24;
@@ -286,6 +353,7 @@
             border-radius: 8px;
             margin: 10px 0;
             border: 1px solid #f5c6cb;
+            display: none;
         }
 
         .success-message {
@@ -295,6 +363,24 @@
             border-radius: 8px;
             margin: 10px 0;
             border: 1px solid #c3e6cb;
+        }
+
+        .debug-info {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            z-index: 9999;
+            display: none;
+        }
+
+        .debug-info.active {
+            display: block;
         }
 
         @media (max-width: 768px) {
@@ -324,7 +410,7 @@
             Загрузка модулей игры...
         </div>
 
-        <div class="error-message" id="error-display" style="display: none;">
+        <div class="error-message" id="error-display">
             <h3>Ошибка загрузки</h3>
             <p>Убедитесь, что запускаете игру через веб-сервер (не file://)</p>
         </div>
@@ -332,17 +418,23 @@
         <!-- Главное меню -->
         <div id="menu" class="screen active">
             <h1>🎲 Ходилка-приключение</h1>
-            <h2>Модульная версия</h2>
+            <h2>Модульная версия с отладкой</h2>
             
             <div class="players-setup">
                 <div class="player-form">
                     <h3>Добавить игрока</h3>
                     <div class="input-group">
                         <label for="player-name">Имя игрока:</label>
-                        <input type="text" id="player-name" placeholder="Введите имя">
+                        <input type="text" id="player-name" placeholder="Введите имя" autocomplete="off">
                     </div>
-                    <button class="btn" id="add-player">Добавить игрока</button>
-                    <button class="btn" id="add-bot">Добавить бота</button>
+                    <button class="btn" id="add-player" 
+                            onclick="window.gameActions?.addPlayer()">
+                        Добавить игрока
+                    </button>
+                    <button class="btn" id="add-bot" 
+                            onclick="window.gameActions?.addBot()">
+                        Добавить бота
+                    </button>
                 </div>
 
                 <div class="player-form">
@@ -357,43 +449,65 @@
                     </div>
                     <div class="input-group">
                         <label for="bot-name">Имя бота:</label>
-                        <input type="text" id="bot-name" placeholder="Бот">
+                        <input type="text" id="bot-name" placeholder="Бот" autocomplete="off">
                     </div>
                 </div>
             </div>
 
             <div class="themes-selection">
                 <h3>Выберите темы вопросов:</h3>
-                <div class="theme-checkbox">
+                <label class="theme-checkbox">
                     <input type="checkbox" id="theme-math" value="math" checked>
-                    <label for="theme-math">Математика</label>
-                </div>
-                <div class="theme-checkbox">
+                    <span>Математика</span>
+                </label>
+                <label class="theme-checkbox">
                     <input type="checkbox" id="theme-geography" value="geography" checked>
-                    <label for="theme-geography">География</label>
-                </div>
-                <div class="theme-checkbox">
+                    <span>География</span>
+                </label>
+                <label class="theme-checkbox">
                     <input type="checkbox" id="theme-history" value="history">
-                    <label for="theme-history">История</label>
-                </div>
-                <div class="theme-checkbox">
+                    <span>История</span>
+                </label>
+                <label class="theme-checkbox">
                     <input type="checkbox" id="theme-biology" value="biology">
-                    <label for="theme-biology">Биология</label>
-                </div>
-                <div class="theme-checkbox">
+                    <span>Биология</span>
+                </label>
+                <label class="theme-checkbox">
                     <input type="checkbox" id="theme-riddles" value="riddles">
-                    <label for="theme-riddles">Загадки</label>
-                </div>
+                    <span>Загадки</span>
+                </label>
             </div>
 
             <div class="players-list">
                 <h3>Игроки:</h3>
-                <div id="players-list"></div>
+                <div id="players-list">
+                    <p class="no-players">Игроки не добавлены</p>
+                </div>
             </div>
 
             <div style="text-align: center;">
-                <button class="btn" id="start-game" disabled>Начать игру</button>
-                <button class="btn" id="reset-game">Сбросить всё</button>
+                <button class="btn" id="start-game" disabled 
+                        onclick="window.gameActions?.startGame()">
+                    Начать игру
+                </button>
+                <button class="btn" id="reset-game" 
+                        onclick="window.gameActions?.resetGame()">
+                    Сбросить всё
+                </button>
+            </div>
+
+            <!-- Отладочные кнопки -->
+            <div style="text-align: center; margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee;">
+                <small style="color: #666;">Отладка:</small><br>
+                <button class="btn" onclick="window.debugGame?.()" style="font-size: 12px; padding: 8px 16px;">
+                    Проверить состояние
+                </button>
+                <button class="btn" onclick="window.forceUnlockButtons?.()" style="font-size: 12px; padding: 8px 16px;">
+                    Разблокировать кнопки
+                </button>
+                <button class="btn" onclick="console.clear()" style="font-size: 12px; padding: 8px 16px;">
+                    Очистить консоль
+                </button>
             </div>
         </div>
 
@@ -437,7 +551,7 @@
         <div class="modal-content">
             <h3>Вопрос</h3>
             <p id="question-text"></p>
-            <input type="text" id="answer-input" placeholder="Введите ответ">
+            <input type="text" id="answer-input" placeholder="Введите ответ" autocomplete="off">
             <div>
                 <button class="btn" id="submit-answer">Ответить</button>
                 <button class="btn" id="skip-question">Пропустить</button>
@@ -460,7 +574,62 @@
         </div>
     </div>
 
+    <!-- Отладочная информация -->
+    <div id="debug-info" class="debug-info">
+        <div>Состояние: <span id="debug-status">Загрузка...</span></div>
+        <div>Игроков: <span id="debug-players">0</span></div>
+        <div>Экран: <span id="debug-screen">menu</span></div>
+    </div>
+
     <script type="module" src="main.js"></script>
+    
+    <!-- Fallback скрипт для критических ошибок -->
+    <script>
+        // Показываем отладочную информацию в разработке
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            setTimeout(() => {
+                const debugElement = document.getElementById('debug-info');
+                if (debugElement) {
+                    debugElement.classList.add('active');
+                }
+            }, 1000);
+        }
+
+        // Обработка ошибок модулей
+        window.addEventListener('error', (e) => {
+            if (e.message.includes('module')) {
+                console.error('Ошибка загрузки модуля:', e);
+                const errorElement = document.getElementById('error-display');
+                if (errorElement) {
+                    errorElement.style.display = 'block';
+                    errorElement.innerHTML = `
+                        <h3>Ошибка загрузки модулей</h3>
+                        <p>Убедитесь, что:</p>
+                        <ul style="text-align: left;">
+                            <li>Игра запускается через веб-сервер (http://)</li>
+                            <li>Все файлы модулей находятся в правильных папках</li>
+                            <li>Нет блокировки CORS в браузере</li>
+                        </ul>
+                        <button onclick="location.reload()" class="btn">Перезагрузить</button>
+                    `;
+                }
+            }
+        });
+
+        // Принудительная разблокировка кнопок через 5 секунд если ничего не работает
+        setTimeout(() => {
+            if (!window.game) {
+                console.warn('Игра не инициализирована, принудительно разблокируем кнопки');
+                const buttons = document.querySelectorAll('button');
+                buttons.forEach(btn => {
+                    if (['add-player', 'add-bot', 'reset-game'].includes(btn.id)) {
+                        btn.disabled = false;
+                        btn.style.pointerEvents = 'auto';
+                        btn.style.opacity = '1';
+                    }
+                });
+            }
+        }, 5000);
+    </script>
 </body>
 </html>
-
