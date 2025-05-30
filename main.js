@@ -31,8 +31,9 @@ async function initializeGame() {
         log('Инициализируем игру...');
         await game.initialize();
         
-        // Настраиваем глобальные обработчики как fallback
-        setupGlobalHandlers(game);
+        // НЕ настраиваем дублирующие глобальные обработчики
+        // Оставляем только отладочные функции
+        setupDebugHandlers(game);
         
         // Скрываем индикатор загрузки
         if (loadingElement) {
@@ -81,95 +82,8 @@ async function initializeGame() {
     }
 }
 
-// Глобальные функции-обработчики как fallback
-function setupGlobalHandlers(game) {
-    window.gameActions = {
-        addPlayer: () => {
-            log('Добавление игрока через глобальный обработчик');
-            const nameInput = document.getElementById('player-name');
-            const name = nameInput?.value.trim();
-            
-            if (!name) {
-                alert('Введите имя игрока!');
-                return;
-            }
-            
-            try {
-                const player = game.addPlayer(name, false);
-                if (player) {
-                    nameInput.value = '';
-                    log(`Игрок ${name} добавлен`);
-                }
-            } catch (error) {
-                error('Ошибка добавления игрока:', error);
-                alert('Ошибка добавления игрока');
-            }
-        },
-        
-        addBot: () => {
-            log('Добавление бота через глобальный обработчик');
-            const difficultySelect = document.getElementById('bot-difficulty');
-            const botNameInput = document.getElementById('bot-name');
-            
-            const difficulty = difficultySelect?.value || 'medium';
-            const name = botNameInput?.value.trim() || 'Бот';
-            
-            try {
-                const player = game.addPlayer(name, true, difficulty);
-                if (player) {
-                    if (botNameInput) botNameInput.value = '';
-                    log(`Бот ${name} добавлен с сложностью ${difficulty}`);
-                }
-            } catch (error) {
-                error('Ошибка добавления бота:', error);
-                alert('Ошибка добавления бота');
-            }
-        },
-        
-        startGame: () => {
-            log('Начало игры через глобальный обработчик');
-            
-            if (game.gameState.players.length === 0) {
-                alert('Добавьте игроков перед началом игры!');
-                return;
-            }
-            
-            const selectedThemes = [];
-            const checkboxes = document.querySelectorAll('input[id^="theme-"]:checked');
-            
-            checkboxes.forEach(checkbox => {
-                selectedThemes.push(checkbox.value);
-            });
-            
-            if (selectedThemes.length === 0) {
-                alert('Выберите хотя бы одну тему вопросов!');
-                return;
-            }
-            
-            try {
-                game.updateThemes(selectedThemes);
-                game.startGame();
-                log('Игра началась');
-            } catch (error) {
-                error('Ошибка начала игры:', error);
-                alert('Ошибка начала игры');
-            }
-        },
-        
-        resetGame: () => {
-            log('Сброс игры через глобальный обработчик');
-            if (confirm('Вы уверены, что хотите сбросить всё?')) {
-                try {
-                    game.resetGame();
-                    log('Игра сброшена');
-                } catch (error) {
-                    error('Ошибка сброса игры:', error);
-                    alert('Ошибка сброса игры');
-                }
-            }
-        }
-    };
-    
+// ТОЛЬКО отладочные функции, БЕЗ дублирующих обработчиков игровых событий
+function setupDebugHandlers(game) {
     // Отладочные функции
     window.debugGame = () => {
         console.log('=== СОСТОЯНИЕ ИГРЫ ===');
@@ -190,7 +104,9 @@ function setupGlobalHandlers(game) {
             console.log(`  ${id}:`, {
                 exists: !!btn,
                 disabled: btn?.disabled,
-                visible: btn?.style.display !== 'none'
+                visible: btn?.style.display !== 'none',
+                hasOnClick: !!btn?.onclick,
+                eventListeners: btn?._eventListeners || 'неизвестно'
             });
         });
         
@@ -200,6 +116,13 @@ function setupGlobalHandlers(game) {
         themeCheckboxes.forEach(cb => {
             console.log(`  ${cb.id}: ${cb.checked ? 'checked' : 'unchecked'} (value: ${cb.value})`);
         });
+        
+        // Проверяем input поля
+        const nameInput = document.getElementById('player-name');
+        const botNameInput = document.getElementById('bot-name');
+        console.log('Состояние полей ввода:');
+        console.log(`  player-name: "${nameInput?.value}" (длина: ${nameInput?.value?.length || 0})`);
+        console.log(`  bot-name: "${botNameInput?.value}" (длина: ${botNameInput?.value?.length || 0})`);
         
         return game.getDebugInfo();
     };
@@ -222,7 +145,47 @@ function setupGlobalHandlers(game) {
         }
     };
     
-    log('Глобальные обработчики настроены');
+    // Функция для принудительной разблокировки кнопок
+    window.forceUnlockButtons = () => {
+        const buttonIds = ['add-player', 'add-bot', 'reset-game'];
+        
+        buttonIds.forEach(id => {
+            const button = document.getElementById(id);
+            if (button) {
+                button.disabled = false;
+                button.style.pointerEvents = 'auto';
+                button.style.opacity = '1';
+                log(`Кнопка ${id} принудительно разблокирована`);
+            }
+        });
+    };
+    
+    // Функция для тестирования добавления игроков
+    window.testAddPlayer = (name = 'Тестовый игрок') => {
+        log(`Тестовое добавление игрока: ${name}`);
+        try {
+            const player = game.addPlayer(name, false);
+            log('Результат:', player);
+            return player;
+        } catch (error) {
+            error('Ошибка тестового добавления:', error);
+            return null;
+        }
+    };
+    
+    window.testAddBot = (name = 'Тестовый бот', difficulty = 'medium') => {
+        log(`Тестовое добавление бота: ${name} (${difficulty})`);
+        try {
+            const bot = game.addPlayer(name, true, difficulty);
+            log('Результат:', bot);
+            return bot;
+        } catch (error) {
+            error('Ошибка тестового добавления бота:', error);
+            return null;
+        }
+    };
+    
+    log('Отладочные функции настроены (БЕЗ дублирующих обработчиков игровых событий)');
 }
 
 // Запуск инициализации
