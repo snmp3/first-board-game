@@ -2,7 +2,7 @@ export class SettingsManager {
     constructor() {
         this.storageKey = 'adventure-game-settings';
         this.defaultSettings = {
-            selectedThemes: ['math', 'geography'],
+            selectedThemes: ['math', 'riddles'],
             botDifficulty: 'medium',
             soundEnabled: true,
             animationsEnabled: true,
