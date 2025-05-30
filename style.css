@@ -863,147 +863,71 @@ select.form-control {
     font-size: var(--font-size-lg);
 }
 
-/* Player Names Setup (НОВЫЙ СТИЛЬ) */
-.names-setup-container {
-    max-width: 500px;
-    width: 100%;
-    text-align: center;
-}
-
-.names-setup-container h2 {
-    margin-bottom: var(--space-32);
-    color: var(--color-primary);
-}
-
-.player-names-form {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-16);
-    margin-bottom: var(--space-32);
-    width: 100%;
-}
-
-.player-name-input {
-    display: flex;
-    align-items: center;
-    gap: var(--space-12);
-    background: var(--color-surface);
-    padding: var(--space-12);
-    border-radius: var(--radius-base);
-    border: 1px solid var(--color-card-border);
-}
-
-.player-color-indicator {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    flex-shrink: 0;
-}
-
-.player-name-field {
-    flex-grow: 1;
-}
-
-.names-actions {
-    display: flex;
-    gap: var(--space-16);
-    justify-content: center;
-    width: 100%;
-}
-
 /* Game Screen */
 #game-screen {
     padding: var(--space-16);
     max-width: 100%;
     width: 100%;
+    align-items: flex-start;
 }
 
-.game-header {
+/* Новый стиль: Основной игровой макет с выравниванием по верхнему краю */
+.game-layout {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: var(--space-20);
-    background: var(--color-surface);
-    padding: var(--space-16);
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--color-card-border);
-}
-
-.game-info {
-    display: flex;
-    align-items: center;
-    gap: var(--space-24);
-}
-
-.current-player {
-    display: flex;
-    align-items: center;
-    gap: var(--space-8);
-    font-weight: var(--font-weight-medium);
-}
-
-.player-indicator {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    border: 2px solid var(--color-border);
-}
-
-.dice-container {
-    display: flex;
-    align-items: center;
-    gap: var(--space-12);
-}
-
-.dice-result {
-    font-size: var(--font-size-2xl);
-    font-weight: var(--font-weight-bold);
-    min-width: 40px;
-    text-align: center;
+    align-items: flex-start; /* Выравнивание по верхнему краю */
+    gap: 24px;
+    width: 100%;
 }
 
 .game-board-container {
+    flex: 1;
+    max-width: 800px;
+}
+
+.right-panel {
+    width: 350px;
     display: flex;
-    justify-content: center;
-    margin-bottom: var(--space-20);
+    flex-direction: column;
+    gap: 24px;
+    /* Убраны лишние отступы сверху */
 }
 
-#game-board {
-    border: 3px solid var(--color-primary);
-    border-radius: var(--radius-lg);
-    background: var(--color-surface);
+/* Стили для карточек с информацией */
+.players-section, .control-section {
+    width: 100%;
 }
 
-.players-info {
-    background: var(--color-surface);
-    border-radius: var(--radius-lg);
-    padding: var(--space-16);
-    border: 1px solid var(--color-card-border);
+.players-section .card__body {
+    padding-top: var(--space-16);
+}
+
+.players-section h3 {
+    margin-bottom: var(--space-16);
 }
 
 .players-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: var(--space-16);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-12);
 }
 
 .player-info {
     display: flex;
     align-items: center;
-    gap: var(--space-12);
-    padding: var(--space-12);
+    padding: var(--space-10);
+    background-color: var(--color-secondary);
     border-radius: var(--radius-base);
-    background: var(--color-secondary);
+    gap: var(--space-10);
 }
 
 .player-info.current {
-    background: var(--color-primary);
+    background-color: var(--color-primary);
     color: var(--color-btn-primary-text);
 }
 
 .player-info.skipped {
-    opacity: 0.6;
-    background: var(--color-warning);
+    opacity: 0.7;
+    background-color: var(--color-warning);
     color: white;
 }
 
@@ -1015,11 +939,65 @@ select.form-control {
 }
 
 .player-position {
+    margin-left: auto;
     font-weight: var(--font-weight-medium);
     font-size: var(--font-size-sm);
 }
 
-/* Modals */
+/* Стили для управления игрой */
+.control-section .card__body {
+    padding-top: var(--space-16);
+}
+
+.current-player-info {
+    margin-bottom: var(--space-16);
+}
+
+.current-player {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    background-color: var(--color-secondary);
+    padding: var(--space-10);
+    border-radius: var(--radius-base);
+    margin-top: var(--space-8);
+}
+
+.current-player .player-indicator {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 2px solid var(--color-border);
+}
+
+.dice-section {
+    margin-bottom: var(--space-16);
+}
+
+.dice-container {
+    display: flex;
+    align-items: center;
+    gap: var(--space-12);
+    margin-top: var(--space-8);
+}
+
+.dice-result {
+    font-size: var(--font-size-3xl);
+    font-weight: var(--font-weight-bold);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-width: 60px;
+    min-height: 60px;
+    background-color: var(--color-secondary);
+    border-radius: var(--radius-base);
+}
+
+.game-actions {
+    margin-top: var(--space-20);
+}
+
+/* Модальные окна */
 .modal {
     display: none;
     position: fixed;
@@ -1102,6 +1080,7 @@ select.form-control {
     padding: var(--space-12);
     border-radius: var(--radius-base);
     font-weight: var(--font-weight-medium);
+    display: none;
 }
 
 .victory-content {
@@ -1141,64 +1120,38 @@ select.form-control {
 }
 
 /* Responsive */
+@media (max-width: 1024px) {
+    .game-layout {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .game-board-container {
+        margin-bottom: var(--space-20);
+        width: 100%;
+    }
+
+    .right-panel {
+        width: 100%;
+        max-width: 800px;
+    }
+}
+
 @media (max-width: 768px) {
     .screen {
         padding: var(--space-16);
-    }
-    
-    .game-header {
-        flex-direction: column;
-        gap: var(--space-16);
-    }
-    
-    .game-info {
-        flex-direction: column;
-        gap: var(--space-12);
     }
     
     .themes-grid {
         grid-template-columns: 1fr;
     }
     
-    .players-list {
-        grid-template-columns: 1fr;
-    }
-    
-    .victory-actions, 
-    .names-actions {
-        flex-direction: column;
-    }
-    
+    .victory-actions,
     .settings-actions {
         flex-direction: column;
     }
-}
 
-/* Animation classes */
-.cell-highlight {
-    animation: highlight 0.5s ease-in-out;
-}
-
-@keyframes highlight {
-    0% { background-color: transparent; }
-    50% { background-color: rgba(255, 255, 0, 0.5); }
-    100% { background-color: transparent; }
-}
-
-.player-moving {
-    transition: all 0.5s ease-in-out;
-}
-
-/* Disabled state */
-.btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-/* Focus states for better accessibility */
-.btn:focus-visible,
-.form-control:focus-visible,
-.theme-checkbox:focus-visible {
-    outline: var(--focus-outline);
-    outline-offset: 2px;
+    .dice-container {
+        flex-direction: column;
+    }
 }

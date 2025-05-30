@@ -30,29 +30,29 @@
                     <h3>Активные темы вопросов</h3>
                     <div class="themes-grid">
                         <label class="theme-checkbox">
-                            <input type="checkbox" id="matematika" checked>
+                            <input type="checkbox" id="math" checked>
                             <span class="checkmark"></span>
-                            <span class="theme-name">📊 Математика</span>
+                            <span class="theme-name">🧮 Математика</span>
                         </label>
                         <label class="theme-checkbox">
-                            <input type="checkbox" id="geografiya" checked>
+                            <input type="checkbox" id="geography" checked>
                             <span class="checkmark"></span>
                             <span class="theme-name">🌍 География</span>
                         </label>
                         <label class="theme-checkbox">
-                            <input type="checkbox" id="istoriya" checked>
+                            <input type="checkbox" id="history" checked>
                             <span class="checkmark"></span>
-                            <span class="theme-name">📜 История</span>
+                            <span class="theme-name">📚 История</span>
                         </label>
                         <label class="theme-checkbox">
-                            <input type="checkbox" id="biologiya" checked>
+                            <input type="checkbox" id="biology" checked>
                             <span class="checkmark"></span>
-                            <span class="theme-name">🧬 Биология</span>
+                            <span class="theme-name">🌿 Биология</span>
                         </label>
                         <label class="theme-checkbox">
-                            <input type="checkbox" id="zagadki" checked>
+                            <input type="checkbox" id="riddles" checked>
                             <span class="checkmark"></span>
-                            <span class="theme-name">🧩 Загадки</span>
+                            <span class="theme-name">💡 Загадки</span>
                         </label>
                     </div>
                 </div>
@@ -117,42 +117,48 @@
             </div>
         </div>
 
-        <!-- Ввод имен игроков (НОВЫЙ ЭКРАН) -->
-        <div id="names-setup-screen" class="screen">
-            <div class="names-setup-container">
-                <h2>👤 Введите имена игроков</h2>
-                <div class="player-names-form" id="player-names-form">
-                    <!-- Сюда будут добавлены поля ввода для имен игроков -->
-                </div>
-                <div class="names-actions">
-                    <button class="btn btn--primary" id="start-game-btn">▶️ Начать игру</button>
-                    <button class="btn btn--outline" id="back-from-names-btn">← Назад</button>
-                </div>
-            </div>
-        </div>
-
         <!-- Игровой экран -->
         <div id="game-screen" class="screen">
-            <div class="game-header">
-                <div class="game-info">
-                    <div class="current-player">
-                        <span class="player-indicator"></span>
-                        <span class="player-name"></span>
+            <div class="game-layout">
+                <!-- Левая часть: игровое поле -->
+                <div class="game-board-container">
+                    <canvas id="game-board"></canvas>
+                </div>
+
+                <!-- Правая панель -->
+                <div class="right-panel">
+                    <!-- Верхняя секция: список игроков -->
+                    <div class="players-section card">
+                        <div class="card__body">
+                            <h3>👥 Игроки</h3>
+                            <div class="players-list" id="players-list"></div>
+                        </div>
                     </div>
-                    <div class="dice-container">
-                        <button class="btn btn--primary" id="roll-dice-btn">🎲 Бросить кубик</button>
-                        <div class="dice-result"></div>
+
+                    <!-- Нижняя секция: управление -->
+                    <div class="control-section card">
+                        <div class="card__body">
+                            <div class="current-player-info">
+                                <h4>Ход игрока:</h4>
+                                <div class="current-player">
+                                    <span class="player-indicator"></span>
+                                    <span class="player-name"></span>
+                                </div>
+                            </div>
+                            
+                            <div class="dice-section">
+                                <div class="dice-container">
+                                    <button class="btn btn--primary btn--full-width" id="roll-dice-btn">🎲 Бросить кубик</button>
+                                    <div class="dice-result"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="game-actions">
+                                <button class="btn btn--outline btn--full-width" id="exit-game-btn">🚪 Выйти из игры</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <button class="btn btn--outline btn--sm" id="exit-game-btn">🚪 Выйти</button>
-            </div>
-
-            <div class="game-board-container">
-                <canvas id="game-board"></canvas>
-            </div>
-
-            <div class="players-info">
-                <div class="players-list" id="players-list"></div>
             </div>
         </div>
 
