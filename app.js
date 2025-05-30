@@ -329,9 +329,230 @@ class AdventureGame {
             `;
             playersList.appendChild(playerDiv);
         });
-        // ... (остальной UI)
+        
+        // ИСПРАВЛЕНО: включаем кнопку кубика
+        const rollBtn = document.getElementById('roll-dice-btn');
+        rollBtn.disabled = false;
+		// ... (остальной UI)
+    }
+	rollDice() {Add commentMore actions
+        const currentPlayer = this.gameState.players[this.gameState.currentPlayerIndex];
+        
+        // Проверяем, нужно ли пропустить ход
+        if (this.gameState.skipNextTurn[currentPlayer.id]) {
+            delete this.gameState.skipNextTurn[currentPlayer.id];
+            document.querySelector('.dice-result').textContent = "Пропуск";
+            setTimeout(() => {
+                this.nextPlayer();
+            }, 1000);
+            return;
+        }
+        
+        // Отключаем кнопку на время хода
+        document.getElementById('roll-dice-btn').disabled = true;
+        
+        const diceResult = Math.floor(Math.random() * 6) + 1;
+        document.querySelector('.dice-result').textContent = diceResult;
+        
+        // Перемещаем игрока
+        setTimeout(() => {
+            this.movePlayer(currentPlayer, diceResult);
+        }, 800);
     }
 
+    movePlayer(player, steps) {
+        const newPosition = Math.min(player.position + steps, 120);
+        player.position = newPosition;
+        
+        this.drawBoard();
+        this.updateUI();
+        
+        // Проверяем победу
+        if (newPosition >= 120) {
+            setTimeout(() => {
+                this.endGame(player);
+            }, 500);
+            return;
+        }
+        
+        // Проверяем прыжки
+        if (this.jumpCells[newPosition]) {
+            setTimeout(() => {
+                player.position = this.jumpCells[newPosition].target;
+                this.drawBoard();
+                this.updateUI();
+                
+                // Проверяем победу после прыжка
+                if (player.position >= 120) {
+                    this.endGame(player);
+                } else {
+                    // Включаем кнопку обратно
+                    document.getElementById('roll-dice-btn').disabled = false;
+                    this.nextPlayer();
+                }
+            }, 1000);
+        } else {
+            // Задаем вопрос
+            setTimeout(() => {
+                this.askQuestion(player);
+            }, 500);
+        }
+    }
+
+    askQuestion(player) {
+        if (player.isBot) {
+            // Получаем настройки бота в зависимости от выбранной сложности
+            const botSettings = this.botDifficulty[this.selectedDifficulty];
+            
+            // Расчет случайного времени "размышления" бота
+            const minTime = botSettings.thinkTime[0];
+            const maxTime = botSettings.thinkTime[1];
+            const thinkTime = Math.floor(Math.random() * (maxTime - minTime + 1)) + minTime;
+            
+            // Определяем успешность ответа бота на основе его шанса
+            const isCorrect = Math.random() < botSettings.successRate;
+            
+            // Симулируем время обдумывания для бота
+            setTimeout(() => {
+                if (!isCorrect) {
+                    this.gameState.skipNextTurn[player.id] = true;
+                }
+                document.getElementById('roll-dice-btn').disabled = false;
+                this.nextPlayer();
+            }, thinkTime);
+            
+            return;
+        }
+        
+        const question = this.getRandomQuestion();
+        if (!question) {
+            document.getElementById('roll-dice-btn').disabled = false;
+            this.nextPlayer();
+            return;
+        }
+        
+        this.currentQuestion = question;
+        
+        // Показываем модальное окно с вопросом
+        document.querySelector('.question-theme').textContent = this.getThemeName(question.theme);
+        document.querySelector('.question-text').textContent = question.question;
+        document.getElementById('answer-input').value = '';
+        document.getElementById('question-modal').classList.add('active');
+        
+        // Фокус на поле ввода
+        setTimeout(() => {
+            document.getElementById('answer-input').focus();
+        }, 100);
+    }
+
+    getRandomQuestion() {
+        const activeThemeNames = Object.keys(this.activeThemes).filter(theme => this.activeThemes[theme]);
+        if (activeThemeNames.length === 0) return null;
+        
+        const randomTheme = activeThemeNames[Math.floor(Math.random() * activeThemeNames.length)];
+        const themeQuestions = this.questions[randomTheme];
+        
+        if (!themeQuestions || themeQuestions.length === 0) return null;
+        
+        const randomQuestion = themeQuestions[Math.floor(Math.random() * themeQuestions.length)];
+        
+        return {
+            ...randomQuestion,
+            theme: randomTheme
+        };
+    }
+
+    getThemeName(themeKey) {
+        const themeNames = {
+            mathematics: '🧮 Математика',
+            geography: '🌍 География',
+            history: '📚 История',
+            biology: '🍃 Биология',
+            riddles: '💡 Загадки'
+        };
+        return themeNames[themeKey] || themeKey;
+    }
+
+    submitAnswer() {
+        if (!this.currentQuestion) return;
+        
+        const userAnswer = document.getElementById('answer-input').value;
+        const correctAnswer = this.currentQuestion.answer;
+        
+        // ИСПРАВЛЕНО: пустые ответы считаются неправильными
+        // Проверяем, что ответ не пустой и не состоит только из пробелов
+        const isEmptyAnswer = userAnswer.trim() === '';
+        
+        // Сравниваем нормализованные ответы (приведенные к нижнему регистру и без лишних пробелов)
+        const isCorrect = !isEmptyAnswer && 
+                          userAnswer.trim().toLowerCase() === correctAnswer.trim().toLowerCase();
+        
+        // Скрываем модальное окно с вопросом
+        document.getElementById('question-modal').classList.remove('active');
+        
+        // Показываем результат
+        this.showResult(isCorrect, this.currentQuestion.answer);
+    }
+
+    showResult(isCorrect, correctAnswer) {
+        const resultModal = document.getElementById('result-modal');
+        const resultIcon = document.querySelector('.result-icon');
+        const resultText = document.querySelector('.result-text');
+        const correctAnswerDiv = document.querySelector('.correct-answer');
+        
+        if (isCorrect) {
+            resultIcon.textContent = '✅';
+            resultText.textContent = 'Правильно!';
+            resultText.style.color = '#4CAF50';
+            correctAnswerDiv.style.display = 'none';
+        } else {
+            resultIcon.textContent = '❌';
+            resultText.textContent = 'Неправильно!';
+            resultText.style.color = '#f44336';
+            correctAnswerDiv.textContent = `Правильный ответ: ${correctAnswer}`;
+            correctAnswerDiv.style.display = 'block';
+            
+            // Игрок пропускает следующий ход
+            const currentPlayer = this.gameState.players[this.gameState.currentPlayerIndex];
+            this.gameState.skipNextTurn[currentPlayer.id] = true;
+        }
+        
+        resultModal.classList.add('active');
+    }
+
+    continueGame() {
+        document.getElementById('result-modal').classList.remove('active');
+        document.getElementById('roll-dice-btn').disabled = false;
+        this.nextPlayer();
+    }
+
+    nextPlayer() {
+        this.gameState.currentPlayerIndex = (this.gameState.currentPlayerIndex + 1) % this.gameState.players.length;
+        this.updateUI();
+        
+        // Если следующий игрок - бот, делаем его ход автоматически
+        const nextPlayer = this.gameState.players[this.gameState.currentPlayerIndex];
+        if (nextPlayer.isBot && this.gameState.isGameActive) {
+            setTimeout(() => {
+                this.rollDice();
+            }, 1500);
+        }
+    }
+
+    endGame(winner) {
+        this.gameState.isGameActive = false;
+        
+        // Показываем модальное окно победы
+        document.querySelector('.winner-color').style.backgroundColor = winner.color;
+        document.querySelector('.winner-text').textContent = `${winner.name} победил!`;
+        document.getElementById('victory-modal').classList.add('active');
+    }
+
+    exitGame() {
+        if (confirm('Вы уверены, что хотите выйти из игры?')) {
+            this.showScreen('main-menu');
+        }
+    }
     // ... (остальной код игры)
 }
 
