@@ -92,7 +92,6 @@ export class Game {
                 this.handleScreenChange(event.detail.from, event.detail.to);
             });
             
-            // ТЕСТИРУЕМ ПРЫЖКИ ПРИ ИНИЦИАЛИЗАЦИИ
             this.log('🧪 Тестирование прыжков...');
             this.gameBoard.testJumps();
             
@@ -361,7 +360,6 @@ export class Game {
         }
     }
 
-    // КРИТИЧЕСКИ ИСПРАВЛЕННЫЙ метод moveCurrentPlayer
     moveCurrentPlayer() {
         try {
             const currentPlayer = this.gameState.getCurrentPlayer();
@@ -380,7 +378,6 @@ export class Game {
             
             this.dice = null;
             
-            // КРИТИЧЕСКИ ВАЖНО: проверяем прыжки с подробным логированием
             this.log(`🔍 Проверяем прыжки для позиции ${newPosition + 1}...`);
             const jumpDestination = this.gameBoard.getJumpDestination(newPosition);
             
@@ -389,12 +386,10 @@ export class Game {
                 
                 this.log(`🎯 ПРЫЖОК НАЙДЕН! ${newPosition + 1} → ${jumpDestination + 1} (${isLadder ? 'лестница' : 'змея'})`);
                 
-                // Обновляем позицию игрока
                 this.gameState.setPlayerPosition(currentPlayer.id, jumpDestination);
                 
                 const message = isLadder ? 'Лестница вверх!' : 'Змея вниз!';
                 
-                // Показываем сообщение о прыжке
                 this.modalManager.showMessage(
                     `${currentPlayer.name} попал на специальную клетку!`,
                     `${message}\nСтарая позиция: ${newPosition + 1}\nНовая позиция: ${jumpDestination + 1}`,
@@ -409,7 +404,6 @@ export class Game {
                 this.continueAfterMove();
             }
             
-            // ВАЖНО: обновляем отображение в любом случае
             this.updateGameDisplay();
             this.updatePlayersDisplay();
             this.updatePlayersGameDisplay();
@@ -441,7 +435,7 @@ export class Game {
             if (currentPlayer.isBot) {
                 await this.handleBotAnswer();
             } else {
-                await new Promise(resolve => setTimeout(resolve, 100));
+                await new Promise(resolve => setTimeout(resolve, 200));
                 
                 this.modalManager.showQuestion(
                     this.currentQuestion.text,
@@ -498,56 +492,90 @@ export class Game {
         }
     }
 
+    // КРИТИЧЕСКИ ИСПРАВЛЕННЫЙ метод обработки ответов игроков
     handleAnswer(userAnswer) {
         try {
             const currentPlayer = this.gameState.getCurrentPlayer();
             if (!currentPlayer || !this.currentQuestion) {
-                this.error('Нет текущего игрока или вопроса для обработки ответа');
+                this.error('❌ Нет текущего игрока или вопроса для обработки ответа');
                 return;
             }
 
             this.log(`💭 ${currentPlayer.name} ответил: "${userAnswer}"`);
 
+            // ВАЖНО: принудительно закрываем все модальные окна
             this.modalManager.forceCloseAll();
 
             currentPlayer.questionsAnswered++;
             const isCorrect = this.questionLoader.checkAnswer(userAnswer, this.currentQuestion.answer);
             
-            this.log(`Результат проверки: ${isCorrect ? 'правильно' : 'неправильно'}`);
+            this.log(`✅ Результат проверки: ${isCorrect ? 'ПРАВИЛЬНО' : 'НЕПРАВИЛЬНО'}`);
+            
+            // Сохраняем данные вопроса перед очисткой
+            const questionData = {
+                text: this.currentQuestion.text,
+                correctAnswer: this.currentQuestion.answer,
+                userAnswer: userAnswer
+            };
+            
+            // Очищаем текущий вопрос СРАЗУ
+            this.currentQuestion = null;
             
             if (isCorrect) {
                 currentPlayer.correctAnswers++;
                 
+                this.log('✅ Показываем сообщение об успехе');
                 setTimeout(() => {
                     this.modalManager.showSuccessMessage(
                         'Отличная работа! Продолжайте игру.',
-                        () => this.nextTurn(),
-                        true
+                        () => {
+                            this.log('✅ Переходим к следующему ходу после правильного ответа');
+                            this.nextTurn();
+                        },
+                        true // autoClose = true
                     );
-                }, 200);
+                }, 100);
             } else {
+                // ИСПРАВЛЕНИЕ: устанавливаем пропуск хода
                 this.gameState.setSkipTurns(currentPlayer.id, 1);
                 
+                this.log('❌ Показываем сообщение об ошибке');
                 setTimeout(() => {
                     this.modalManager.showErrorMessage(
-                        `Правильный ответ: ${this.currentQuestion.answer}\nВы пропустите следующий ход.`,
-                        () => this.nextTurn(),
-                        false
+                        `Правильный ответ: ${questionData.correctAnswer}\nВаш ответ: ${questionData.userAnswer}\nВы пропустите следующий ход.`,
+                        () => {
+                            this.log('❌ Переходим к следующему ходу после неправильного ответа');
+                            this.nextTurn();
+                        },
+                        false // autoClose = false - НЕ автозакрытие при ошибке
                     );
-                }, 200);
+                }, 100);
             }
-
-            this.currentQuestion = null;
             
         } catch (error) {
-            this.error('Ошибка обработки ответа:', error);
+            this.error('❌ Критическая ошибка обработки ответа:', error);
+            
+            // Экстренная очистка
             this.modalManager.forceCloseAll();
-            this.nextTurn();
+            this.currentQuestion = null;
+            
+            // Принудительный переход к следующему ходу
+            setTimeout(() => {
+                this.nextTurn();
+            }, 500);
         }
     }
 
     nextTurn() {
         try {
+            this.log('🔄 Начинаем переход хода...');
+            
+            // Убеждаемся что все модальные окна закрыты
+            this.modalManager.forceCloseAll();
+            
+            // Очищаем вопрос если он остался
+            this.currentQuestion = null;
+            
             this.gameState.nextPlayer();
             
             this.updateCurrentPlayerDisplay();
@@ -561,11 +589,30 @@ export class Game {
             const currentPlayer = this.gameState.getCurrentPlayer();
             this.log(`🔄 Переход хода к: ${currentPlayer?.name}`);
 
+            // ВАЖНО: проверяем что игрок существует перед запуском бота
             if (currentPlayer && currentPlayer.isBot) {
-                setTimeout(() => this.rollDice(), 1500);
+                this.log('🤖 Запускаем ход бота через 1.5 секунды');
+                setTimeout(() => {
+                    // Дополнительная проверка что игра не завершилась
+                    if (!this.gameState.gameEnded && this.gameState.getCurrentPlayer()?.isBot) {
+                        this.rollDice();
+                    }
+                }, 1500);
+            } else {
+                this.log('👤 Ожидаем хода игрока');
             }
         } catch (error) {
-            this.error('Ошибка смены хода:', error);
+            this.error('❌ Ошибка смены хода:', error);
+            
+            // Попытка восстановления
+            setTimeout(() => {
+                try {
+                    this.updateCurrentPlayerDisplay();
+                    this.updateGameControlsDisplay();
+                } catch (recoveryError) {
+                    this.error('❌ Ошибка восстановления:', recoveryError);
+                }
+            }, 1000);
         }
     }
 
@@ -573,6 +620,10 @@ export class Game {
         try {
             this.gameState.gameEnded = true;
             this.log(`🏆 Игра окончена! Победитель: ${winner.name}`);
+            
+            // Принудительно закрываем все модальные окна
+            this.modalManager.forceCloseAll();
+            this.currentQuestion = null;
             
             const stats = this.gameState.getStatistics();
             let resultsHTML = `
@@ -771,7 +822,8 @@ export class Game {
             dice: this.dice,
             questionsLoaded: this.questionLoader.loaded,
             modalManagerState: this.modalManager.getDebugInfo(),
-            gameBoardDebug: this.gameBoard.getDebugInfo()
+            gameBoardDebug: this.gameBoard.getDebugInfo(),
+            currentQuestion: !!this.currentQuestion
         };
     }
 
@@ -839,11 +891,10 @@ export class Game {
         };
     }
 
-    // НОВЫЙ метод для тестирования прыжков
     testJumpCell(cellNumber) {
         this.log(`🧪 ТЕСТ ПРЫЖКА ДЛЯ КЛЕТКИ ${cellNumber}`);
         
-        const destination = this.gameBoard.getJumpDestination(cellNumber - 1); // -1 потому что внутри 0-based
+        const destination = this.gameBoard.getJumpDestination(cellNumber - 1);
         
         if (destination !== null) {
             this.log(`✅ Прыжок найден: ${cellNumber} → ${destination + 1}`);
