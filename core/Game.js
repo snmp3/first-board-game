@@ -92,6 +92,10 @@ export class Game {
                 this.handleScreenChange(event.detail.from, event.detail.to);
             });
             
+            // ТЕСТИРУЕМ ПРЫЖКИ ПРИ ИНИЦИАЛИЗАЦИИ
+            this.log('🧪 Тестирование прыжков...');
+            this.gameBoard.testJumps();
+            
             this.initialized = true;
             this.log('🎉 Игра полностью инициализирована');
             
@@ -357,6 +361,7 @@ export class Game {
         }
     }
 
+    // КРИТИЧЕСКИ ИСПРАВЛЕННЫЙ метод moveCurrentPlayer
     moveCurrentPlayer() {
         try {
             const currentPlayer = this.gameState.getCurrentPlayer();
@@ -366,32 +371,45 @@ export class Game {
             }
 
             this.log(`🚶 ${currentPlayer.name} движется на ${this.dice} клеток`);
+            this.log(`📍 Текущая позиция: ${currentPlayer.position + 1}`);
             
             const oldPosition = currentPlayer.position;
             const newPosition = this.gameState.movePlayer(currentPlayer.id, this.dice);
             
+            this.log(`📍 Новая позиция после движения: ${newPosition + 1}`);
+            
             this.dice = null;
             
+            // КРИТИЧЕСКИ ВАЖНО: проверяем прыжки с подробным логированием
+            this.log(`🔍 Проверяем прыжки для позиции ${newPosition + 1}...`);
             const jumpDestination = this.gameBoard.getJumpDestination(newPosition);
+            
             if (jumpDestination !== null) {
                 const isLadder = jumpDestination > newPosition;
                 
+                this.log(`🎯 ПРЫЖОК НАЙДЕН! ${newPosition + 1} → ${jumpDestination + 1} (${isLadder ? 'лестница' : 'змея'})`);
+                
+                // Обновляем позицию игрока
                 this.gameState.setPlayerPosition(currentPlayer.id, jumpDestination);
                 
                 const message = isLadder ? 'Лестница вверх!' : 'Змея вниз!';
+                
+                // Показываем сообщение о прыжке
                 this.modalManager.showMessage(
                     `${currentPlayer.name} попал на специальную клетку!`,
-                    `${message}\nНовая позиция: ${jumpDestination + 1}`,
+                    `${message}\nСтарая позиция: ${newPosition + 1}\nНовая позиция: ${jumpDestination + 1}`,
                     () => this.continueAfterMove(),
-                    { autoClose: true, autoCloseDelay: 2000 }
+                    { autoClose: true, autoCloseDelay: 3000 }
                 );
                 
                 this.log(`🪜 ${currentPlayer.name}: ${oldPosition + 1} → ${newPosition + 1} → ${jumpDestination + 1} (${message})`);
             } else {
+                this.log(`📍 Прыжков нет для позиции ${newPosition + 1}`);
                 this.log(`📍 ${currentPlayer.name}: ${oldPosition + 1} → ${newPosition + 1}`);
                 this.continueAfterMove();
             }
             
+            // ВАЖНО: обновляем отображение в любом случае
             this.updateGameDisplay();
             this.updatePlayersDisplay();
             this.updatePlayersGameDisplay();
@@ -423,7 +441,6 @@ export class Game {
             if (currentPlayer.isBot) {
                 await this.handleBotAnswer();
             } else {
-                // ВАЖНО: убеждаемся что все модальные окна закрыты перед показом вопроса
                 await new Promise(resolve => setTimeout(resolve, 100));
                 
                 this.modalManager.showQuestion(
@@ -458,17 +475,14 @@ export class Game {
             
             if (isCorrect) {
                 currentPlayer.correctAnswers++;
-                // Для бота: автозакрытие через 1 секунду
                 this.modalManager.showBotMessage(
                     'Бот ответил правильно! 🤖🎉',
                     `Вопрос: ${this.currentQuestion.text}\nОтвет: ${answer}`,
                     () => this.nextTurn()
                 );
             } else {
-                // ИСПРАВЛЕНИЕ: Ставим флаг пропуска следующего хода
                 this.gameState.setSkipTurns(currentPlayer.id, 1);
                 
-                // Для бота: автозакрытие через 1 секунду
                 this.modalManager.showBotMessage(
                     'Бот ответил неправильно 🤖😔',
                     `Вопрос: ${this.currentQuestion.text}\nОтвет бота: ${answer}\nПравильный ответ: ${this.currentQuestion.answer}\nБот пропустит следующий ход.`,
@@ -484,7 +498,6 @@ export class Game {
         }
     }
 
-    // КРИТИЧЕСКИ ИСПРАВЛЕННЫЙ метод обработки ответов игроков
     handleAnswer(userAnswer) {
         try {
             const currentPlayer = this.gameState.getCurrentPlayer();
@@ -495,7 +508,6 @@ export class Game {
 
             this.log(`💭 ${currentPlayer.name} ответил: "${userAnswer}"`);
 
-            // КРИТИЧЕСКИ ВАЖНО: Принудительно закрываем все модальные окна
             this.modalManager.forceCloseAll();
 
             currentPlayer.questionsAnswered++;
@@ -506,24 +518,21 @@ export class Game {
             if (isCorrect) {
                 currentPlayer.correctAnswers++;
                 
-                // Небольшая задержка перед показом сообщения
                 setTimeout(() => {
                     this.modalManager.showSuccessMessage(
                         'Отличная работа! Продолжайте игру.',
                         () => this.nextTurn(),
-                        true // autoClose = true
+                        true
                     );
                 }, 200);
             } else {
-                // ИСПРАВЛЕНИЕ: Ставим флаг пропуска следующего хода
                 this.gameState.setSkipTurns(currentPlayer.id, 1);
                 
-                // Небольшая задержка перед показом сообщения
                 setTimeout(() => {
                     this.modalManager.showErrorMessage(
                         `Правильный ответ: ${this.currentQuestion.answer}\nВы пропустите следующий ход.`,
                         () => this.nextTurn(),
-                        false // autoClose = false
+                        false
                     );
                 }, 200);
             }
@@ -532,16 +541,13 @@ export class Game {
             
         } catch (error) {
             this.error('Ошибка обработки ответа:', error);
-            // Экстренная очистка всех модальных окон
             this.modalManager.forceCloseAll();
             this.nextTurn();
         }
     }
 
-    // ЕДИНСТВЕННЫЙ метод смены хода
     nextTurn() {
         try {
-            // nextPlayer автоматически обработает пропуск хода
             this.gameState.nextPlayer();
             
             this.updateCurrentPlayerDisplay();
@@ -609,7 +615,6 @@ export class Game {
         try {
             this.log('🔄 Сброс игры...');
             
-            // Принудительно закрываем все модальные окна
             this.modalManager.forceCloseAll();
             
             this.gameState.reset();
@@ -765,7 +770,8 @@ export class Game {
             availableSubjects: this.availableSubjects.map(s => s.name),
             dice: this.dice,
             questionsLoaded: this.questionLoader.loaded,
-            modalManagerState: this.modalManager.getDebugInfo()
+            modalManagerState: this.modalManager.getDebugInfo(),
+            gameBoardDebug: this.gameBoard.getDebugInfo()
         };
     }
 
@@ -782,19 +788,13 @@ export class Game {
         this.startGame();
     }
 
-    // НОВЫЙ метод экстренного исправления зависших модальных окон
     emergencyFixModals() {
         this.log('🚨 ЭКСТРЕННОЕ ИСПРАВЛЕНИЕ МОДАЛЬНЫХ ОКОН');
         
         try {
-            // Принудительно закрываем все модальные окна
             this.modalManager.emergencyReset();
-            
-            // Очищаем состояние текущего вопроса
             this.currentQuestion = null;
-            
             this.log('✅ Экстренное исправление завершено');
-            
         } catch (error) {
             this.error('Ошибка экстренного исправления:', error);
         }
@@ -837,6 +837,21 @@ export class Game {
             })),
             skipTurnsMap: this.gameState.getAllSkipTurns()
         };
+    }
+
+    // НОВЫЙ метод для тестирования прыжков
+    testJumpCell(cellNumber) {
+        this.log(`🧪 ТЕСТ ПРЫЖКА ДЛЯ КЛЕТКИ ${cellNumber}`);
+        
+        const destination = this.gameBoard.getJumpDestination(cellNumber - 1); // -1 потому что внутри 0-based
+        
+        if (destination !== null) {
+            this.log(`✅ Прыжок найден: ${cellNumber} → ${destination + 1}`);
+        } else {
+            this.log(`❌ Прыжка нет для клетки ${cellNumber}`);
+        }
+        
+        return destination;
     }
 
     get players() {
