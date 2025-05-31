@@ -1,3 +1,5 @@
+import { JUMP_CELLS } from '../core/Constants.js';
+
 export class CanvasRenderer {
     constructor() {
         this.canvas = null;
@@ -11,7 +13,7 @@ export class CanvasRenderer {
             canvasHeight: 600,
             cellsPerRow: 12,
             cellsPerColumn: 10, // 120 клеток всего
-            cellSize: 55, // Увеличено с 45 до 55 для лучшего баланса
+            cellSize: 55,
             borderWidth: 3,
             borderColor: '#2c3e50',
             backgroundColor: '#ecf0f1'
@@ -20,30 +22,20 @@ export class CanvasRenderer {
         // Рассчитываем отступы для центрирования
         this.calculatePadding();
         
-        // Предопределенные лестницы и змеи для отрисовки линий
-        this.snakesAndLadders = [
-            // Лестницы (вверх)
-            { from: 4, to: 14, type: 'ladder' },
-            { from: 9, to: 31, type: 'ladder' },
-            { from: 21, to: 42, type: 'ladder' },
-            { from: 28, to: 84, type: 'ladder' },
-            { from: 36, to: 44, type: 'ladder' },
-            { from: 51, to: 67, type: 'ladder' },
-            { from: 71, to: 91, type: 'ladder' },
-            { from: 80, to: 100, type: 'ladder' },
-            
-            // Змеи (вниз)
-            { from: 16, to: 6, type: 'snake' },
-            { from: 47, to: 26, type: 'snake' },
-            { from: 49, to: 11, type: 'snake' },
-            { from: 56, to: 53, type: 'snake' },
-            { from: 62, to: 19, type: 'snake' },
-            { from: 64, to: 60, type: 'snake' },
-            { from: 87, to: 24, type: 'snake' },
-            { from: 93, to: 73, type: 'snake' },
-            { from: 95, to: 75, type: 'snake' },
-            { from: 98, to: 78, type: 'snake' }
-        ];
+        // ВАЖНО: используем данные из Constants.js напрямую (1-based)
+        this.snakesAndLadders = [];
+        Object.entries(JUMP_CELLS).forEach(([from, to]) => {
+            const fromNum = parseInt(from);
+            const toNum = parseInt(to);
+            const type = toNum > fromNum ? 'ladder' : 'snake';
+            this.snakesAndLadders.push({
+                from: fromNum,
+                to: toNum,
+                type: type
+            });
+        });
+        
+        this.log('CanvasRenderer инициализирован с данными прыжков:', this.snakesAndLadders);
     }
 
     log(...args) {
@@ -124,7 +116,7 @@ export class CanvasRenderer {
             // Рисуем клетки с равномерными отступами
             this.drawCells();
             
-            // Рисуем лестницы и змеи (используем встроенные данные)
+            // Рисуем лестницы и змеи
             this.drawSnakesAndLadders();
             
         } catch (error) {
@@ -137,7 +129,7 @@ export class CanvasRenderer {
         
         for (let row = 0; row < cellsPerColumn; row++) {
             for (let col = 0; col < cellsPerRow; col++) {
-                // Вычисляем номер клетки (змейка)
+                // ИСПРАВЛЕННАЯ логика вычисления номера клетки (как видят игроки, 1-based)
                 let cellNumber;
                 if (row % 2 === 0) {
                     // Четные строки: слева направо
@@ -165,7 +157,7 @@ export class CanvasRenderer {
         let textColor = '#2c3e50';
         let borderColor = '#bdc3c7';
         
-        // Специальные клетки
+        // Специальные клетки (используем 1-based номера как в JUMP_CELLS)
         if (number === 1) {
             cellColor = '#2ecc71'; // Стартовая клетка - зеленая
             textColor = '#ffffff';
@@ -195,7 +187,7 @@ export class CanvasRenderer {
         
         // Рисуем номер клетки
         this.ctx.fillStyle = textColor;
-        this.ctx.font = 'bold 14px Arial'; // Увеличен размер шрифта
+        this.ctx.font = 'bold 14px Arial';
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
         this.ctx.fillText(number.toString(), x + size / 2, y + size / 2);
@@ -210,8 +202,14 @@ export class CanvasRenderer {
             this.ctx.fillStyle = '#ffffff';
             this.ctx.fillText('🐍', x + size / 2, y + size / 4);
         }
+        
+        // ОТЛАДКА: выводим информацию о специальных клетках
+        if (this.isLadderStart(number) || this.isSnakeStart(number)) {
+            this.log(`📍 Специальная клетка ${number}: ${this.isLadderStart(number) ? 'лестница' : 'змея'}`);
+        }
     }
 
+    // ИСПРАВЛЕННЫЕ методы проверки специальных клеток (используют 1-based номера)
     isLadderStart(number) {
         return this.snakesAndLadders.some(item => item.from === number && item.type === 'ladder');
     }
@@ -241,19 +239,21 @@ export class CanvasRenderer {
         });
     }
 
+    // ИСПРАВЛЕННЫЙ метод получения позиции клетки (принимает 1-based номер)
     getCellPosition(cellNumber) {
         const { cellSize, cellsPerRow, cellsPerColumn, paddingX, paddingY } = this.boardConfig;
         
-        // Преобразуем номер клетки в координаты
-        const row = Math.floor((cellNumber - 1) / cellsPerRow);
+        // Преобразуем 1-based номер клетки в координаты
+        const adjustedCellNumber = cellNumber - 1; // Переводим в 0-based для вычислений
+        const row = Math.floor(adjustedCellNumber / cellsPerRow);
         let col;
         
         if (row % 2 === 0) {
             // Четные строки: слева направо
-            col = (cellNumber - 1) % cellsPerRow;
+            col = adjustedCellNumber % cellsPerRow;
         } else {
             // Нечетные строки: справа налево
-            col = cellsPerRow - 1 - ((cellNumber - 1) % cellsPerRow);
+            col = cellsPerRow - 1 - (adjustedCellNumber % cellsPerRow);
         }
         
         const x = paddingX + col * cellSize + cellSize / 2;
@@ -262,10 +262,10 @@ export class CanvasRenderer {
         return { x, y };
     }
 
-    // УПРОЩЕННАЯ отрисовка лестницы - тонкие прямые линии
+    // Упрощенная отрисовка лестницы - тонкие прямые линии
     drawLadder(fromPos, toPos) {
         this.ctx.strokeStyle = '#27ae60';
-        this.ctx.lineWidth = 2; // Тонкая линия
+        this.ctx.lineWidth = 2;
         this.ctx.setLineDash([]);
         
         // Рисуем простую прямую линию от начала к концу
@@ -278,10 +278,10 @@ export class CanvasRenderer {
         this.drawSimpleArrow(fromPos, toPos, '#27ae60');
     }
 
-    // УПРОЩЕННАЯ отрисовка змеи - тонкие прямые линии
+    // Упрощенная отрисовка змеи - тонкие прямые линии
     drawSnake(fromPos, toPos) {
         this.ctx.strokeStyle = '#e74c3c';
-        this.ctx.lineWidth = 2; // Тонкая линия
+        this.ctx.lineWidth = 2;
         this.ctx.setLineDash([5, 5]); // Пунктирная линия для отличия от лестниц
         
         // Рисуем простую прямую линию от начала к концу
@@ -351,29 +351,30 @@ export class CanvasRenderer {
     }
 
     drawPlayer(player, index) {
+        // ИСПРАВЛЕНИЕ: используем 1-based номер клетки для отображения
         const pos = this.getCellPosition(player.position + 1);
         const { cellSize } = this.boardConfig;
         
-        // Смещение для нескольких игроков на одной клетке (увеличено для больших клеток)
+        // Смещение для нескольких игроков на одной клетке
         const offsetX = (index % 2) * 12 - 6;
         const offsetY = Math.floor(index / 2) * 12 - 6;
         
         const x = pos.x + offsetX;
         const y = pos.y + offsetY;
         
-        // Рисуем фишку игрока (увеличен размер)
+        // Рисуем фишку игрока
         this.ctx.fillStyle = player.color;
         this.ctx.strokeStyle = '#2c3e50';
         this.ctx.lineWidth = 2;
         
         this.ctx.beginPath();
-        this.ctx.arc(x, y, 15, 0, 2 * Math.PI); // Увеличен радиус с 12 до 15
+        this.ctx.arc(x, y, 15, 0, 2 * Math.PI);
         this.ctx.fill();
         this.ctx.stroke();
         
         // Рисуем инициал имени или номер игрока
         this.ctx.fillStyle = '#ffffff';
-        this.ctx.font = 'bold 12px Arial'; // Увеличен размер шрифта
+        this.ctx.font = 'bold 12px Arial';
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
         
@@ -388,7 +389,7 @@ export class CanvasRenderer {
         const container = this.canvas.parentElement;
         if (!container) return;
         
-        const containerWidth = container.clientWidth - 40; // Учитываем padding
+        const containerWidth = container.clientWidth - 40;
         const aspectRatio = this.boardConfig.canvasHeight / this.boardConfig.canvasWidth;
         
         if (containerWidth < this.boardConfig.canvasWidth) {
@@ -400,12 +401,12 @@ export class CanvasRenderer {
         }
     }
 
-    // Получение координат клетки для внешних модулей
+    // Получение координат клетки для внешних модулей (1-based)
     getCellCoordinates(cellNumber) {
         return this.getCellPosition(cellNumber);
     }
 
-    // Получение информации о специальной клетке
+    // Получение информации о специальной клетке (1-based)
     getSpecialCellInfo(cellNumber) {
         const snakeOrLadder = this.snakesAndLadders.find(item => item.from === cellNumber);
         return snakeOrLadder || null;
@@ -424,7 +425,8 @@ export class CanvasRenderer {
                 x: this.boardConfig.paddingX,
                 y: this.boardConfig.paddingY
             },
-            snakesAndLaddersCount: this.snakesAndLadders.length
+            snakesAndLaddersCount: this.snakesAndLadders.length,
+            snakesAndLadders: this.snakesAndLadders
         };
     }
 
