@@ -31,10 +31,6 @@ async function initializeGame() {
         log('Инициализируем игру...');
         await game.initialize();
         
-        // НЕ настраиваем дублирующие глобальные обработчики
-        // Оставляем только отладочные функции
-        setupDebugHandlers(game);
-        
         // Скрываем индикатор загрузки
         if (loadingElement) {
             loadingElement.classList.remove('active');
@@ -95,6 +91,7 @@ function setupDebugHandlers(game) {
         console.log('Загружены ли вопросы:', game.questionLoader.loaded);
         console.log('Доступные предметы:', game.availableSubjects);
         console.log('Выбранные темы:', [...game.selectedThemes]);
+        console.log('ModalManager состояние:', game.modalManager.getDebugInfo());
         
         // Проверяем кнопки
         const buttons = ['add-player', 'add-bot', 'start-game', 'reset-game'];
@@ -125,6 +122,20 @@ function setupDebugHandlers(game) {
         console.log(`  bot-name: "${botNameInput?.value}" (длина: ${botNameInput?.value?.length || 0})`);
         
         return game.getDebugInfo();
+    };
+    
+    // НОВАЯ функция экстренного исправления зависших модальных окон
+    window.fixModals = () => {
+        log('🚨 ЭКСТРЕННОЕ ИСПРАВЛЕНИЕ МОДАЛЬНЫХ ОКОН');
+        
+        if (window.game && window.game.emergencyFixModals) {
+            window.game.emergencyFixModals();
+            log('✅ Попытка исправления завершена');
+        } else {
+            log('❌ Функция экстренного исправления недоступна');
+        }
+        
+        return window.game?.modalManager?.getDebugInfo();
     };
     
     // Функция для принудительного пересоздания интерфейса тем
@@ -185,9 +196,13 @@ function setupDebugHandlers(game) {
         }
     };
     
-    log('Отладочные функции настроены (БЕЗ дублирующих обработчиков игровых событий)');
+    log('Отладочные функции настроены (включая экстренное исправление модальных окон)');
 }
 
 // Запуск инициализации
 log('Запуск системы инициализации...');
-initializeGame();
+initializeGame().then(() => {
+    if (window.game) {
+        setupDebugHandlers(window.game);
+    }
+});
