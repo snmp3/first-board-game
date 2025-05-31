@@ -423,6 +423,9 @@ export class Game {
             if (currentPlayer.isBot) {
                 await this.handleBotAnswer();
             } else {
+                // ВАЖНО: убеждаемся что все модальные окна закрыты перед показом вопроса
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
                 this.modalManager.showQuestion(
                     this.currentQuestion.text,
                     this.handleAnswer
@@ -481,7 +484,7 @@ export class Game {
         }
     }
 
-    // ИСПРАВЛЕННЫЙ метод обработки ответов игроков
+    // КРИТИЧЕСКИ ИСПРАВЛЕННЫЙ метод обработки ответов игроков
     handleAnswer(userAnswer) {
         try {
             const currentPlayer = this.gameState.getCurrentPlayer();
@@ -490,40 +493,52 @@ export class Game {
                 return;
             }
 
+            this.log(`💭 ${currentPlayer.name} ответил: "${userAnswer}"`);
+
+            // КРИТИЧЕСКИ ВАЖНО: Принудительно закрываем все модальные окна
+            this.modalManager.forceCloseAll();
+
             currentPlayer.questionsAnswered++;
             const isCorrect = this.questionLoader.checkAnswer(userAnswer, this.currentQuestion.answer);
             
-            this.log(`💭 ${currentPlayer.name} ответил: "${userAnswer}" (${isCorrect ? 'правильно' : 'неправильно'})`);
+            this.log(`Результат проверки: ${isCorrect ? 'правильно' : 'неправильно'}`);
             
             if (isCorrect) {
                 currentPlayer.correctAnswers++;
-                // Для игрока: автозакрытие при правильном ответе через 1 секунду
-                this.modalManager.showSuccessMessage(
-                    'Отличная работа! Продолжайте игру.',
-                    () => this.nextTurn(),
-                    true // autoClose = true
-                );
+                
+                // Небольшая задержка перед показом сообщения
+                setTimeout(() => {
+                    this.modalManager.showSuccessMessage(
+                        'Отличная работа! Продолжайте игру.',
+                        () => this.nextTurn(),
+                        true // autoClose = true
+                    );
+                }, 200);
             } else {
                 // ИСПРАВЛЕНИЕ: Ставим флаг пропуска следующего хода
                 this.gameState.setSkipTurns(currentPlayer.id, 1);
                 
-                // Для игрока: НЕТ автозакрытия при неправильном ответе
-                this.modalManager.showErrorMessage(
-                    `Правильный ответ: ${this.currentQuestion.answer}\nВы пропустите следующий ход.`,
-                    () => this.nextTurn(), // ИСПРАВЛЕНИЕ: вызываем обычный nextTurn
-                    false // autoClose = false
-                );
+                // Небольшая задержка перед показом сообщения
+                setTimeout(() => {
+                    this.modalManager.showErrorMessage(
+                        `Правильный ответ: ${this.currentQuestion.answer}\nВы пропустите следующий ход.`,
+                        () => this.nextTurn(),
+                        false // autoClose = false
+                    );
+                }, 200);
             }
 
             this.currentQuestion = null;
             
         } catch (error) {
             this.error('Ошибка обработки ответа:', error);
+            // Экстренная очистка всех модальных окон
+            this.modalManager.forceCloseAll();
             this.nextTurn();
         }
     }
 
-    // ЕДИНСТВЕННЫЙ метод смены хода (убираем nextTurnAfterWrongAnswer)
+    // ЕДИНСТВЕННЫЙ метод смены хода
     nextTurn() {
         try {
             // nextPlayer автоматически обработает пропуск хода
@@ -593,6 +608,9 @@ export class Game {
     resetGame() {
         try {
             this.log('🔄 Сброс игры...');
+            
+            // Принудительно закрываем все модальные окна
+            this.modalManager.forceCloseAll();
             
             this.gameState.reset();
             this.dice = null;
@@ -746,7 +764,8 @@ export class Game {
             selectedThemes: [...this.selectedThemes],
             availableSubjects: this.availableSubjects.map(s => s.name),
             dice: this.dice,
-            questionsLoaded: this.questionLoader.loaded
+            questionsLoaded: this.questionLoader.loaded,
+            modalManagerState: this.modalManager.getDebugInfo()
         };
     }
 
@@ -761,6 +780,24 @@ export class Game {
             this.forceAddTestPlayers();
         }
         this.startGame();
+    }
+
+    // НОВЫЙ метод экстренного исправления зависших модальных окон
+    emergencyFixModals() {
+        this.log('🚨 ЭКСТРЕННОЕ ИСПРАВЛЕНИЕ МОДАЛЬНЫХ ОКОН');
+        
+        try {
+            // Принудительно закрываем все модальные окна
+            this.modalManager.emergencyReset();
+            
+            // Очищаем состояние текущего вопроса
+            this.currentQuestion = null;
+            
+            this.log('✅ Экстренное исправление завершено');
+            
+        } catch (error) {
+            this.error('Ошибка экстренного исправления:', error);
+        }
     }
 
     debugThemesInterface() {
