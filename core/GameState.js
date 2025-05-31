@@ -66,66 +66,28 @@ export class GameState {
         return this.skipTurns.get(playerId) || 0;
     }
 
+    // ИСПРАВЛЕННАЯ логика смены игрока
     nextPlayer() {
         if (this.players.length === 0) return null;
         
-        const currentPlayer = this.getCurrentPlayer();
-        if (currentPlayer) {
-            const skipTurns = this.getSkipTurns(currentPlayer.id);
-            if (skipTurns > 0) {
-                this.log(`${currentPlayer.name} пропускает ход (осталось: ${skipTurns - 1})`);
-                this.setSkipTurns(currentPlayer.id, skipTurns - 1);
-                return currentPlayer;
-            }
-        }
-        
-        let attempts = 0;
-        const maxAttempts = this.players.length * 2;
-        
-        do {
-            this.currentPlayerIndex = (this.currentPlayerIndex + 1) % this.players.length;
-            attempts++;
-            
-            if (attempts > maxAttempts) {
-                this.error('Превышено количество попыток смены игрока');
-                break;
-            }
-        } while (this.shouldSkipPlayer(this.getCurrentPlayer()));
-        
-        const newCurrentPlayer = this.getCurrentPlayer();
-        this.log(`Переход хода к: ${newCurrentPlayer?.name} (индекс: ${this.currentPlayerIndex})`);
-        
-        return newCurrentPlayer;
-    }
-
-    shouldSkipPlayer(player) {
-        if (!player) return false;
-        const skipTurns = this.getSkipTurns(player.id);
-        return skipTurns > 0;
-    }
-
-    forceNextPlayer() {
-        if (this.players.length === 0) return null;
-        
+        // Переходим к следующему игроку
         this.currentPlayerIndex = (this.currentPlayerIndex + 1) % this.players.length;
         
-        let attempts = 0;
-        const maxAttempts = this.players.length;
+        const currentPlayer = this.getCurrentPlayer();
+        if (!currentPlayer) return null;
         
-        while (this.shouldSkipPlayer(this.getCurrentPlayer()) && attempts < maxAttempts) {
-            const player = this.getCurrentPlayer();
-            const skipTurns = this.getSkipTurns(player.id);
-            this.log(`${player.name} пропускает ход (осталось: ${skipTurns - 1})`);
-            this.setSkipTurns(player.id, skipTurns - 1);
+        // Проверяем, должен ли НОВЫЙ текущий игрок пропустить ход
+        const skipTurns = this.getSkipTurns(currentPlayer.id);
+        if (skipTurns > 0) {
+            this.log(`${currentPlayer.name} пропускает ход (осталось: ${skipTurns - 1})`);
+            this.setSkipTurns(currentPlayer.id, skipTurns - 1);
             
-            this.currentPlayerIndex = (this.currentPlayerIndex + 1) % this.players.length;
-            attempts++;
+            // Рекурсивно вызываем nextPlayer для перехода к следующему игроку
+            return this.nextPlayer();
         }
         
-        const newCurrentPlayer = this.getCurrentPlayer();
-        this.log(`Принудительный переход хода к: ${newCurrentPlayer?.name}`);
-        
-        return newCurrentPlayer;
+        this.log(`Переход хода к: ${currentPlayer.name} (индекс: ${this.currentPlayerIndex})`);
+        return currentPlayer;
     }
 
     movePlayer(playerId, steps) {
