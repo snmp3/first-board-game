@@ -22,7 +22,6 @@ export class ModalManager {
     initialize() {
         this.log('Инициализация ModalManager...');
         
-        // Получаем ссылки на модальные окна
         this.questionModal = document.getElementById('question-modal');
         this.messageModal = document.getElementById('message-modal');
         this.resultsModal = document.getElementById('results-modal');
@@ -42,19 +41,14 @@ export class ModalManager {
     setupEventListeners() {
         this.log('Настройка обработчиков событий...');
         
-        // ИСПРАВЛЕНИЕ: НЕ используем replaceWith - просто удаляем старые обработчики
-        
-        // Обработчики для модального окна вопроса
         const submitAnswerBtn = document.getElementById('submit-answer');
         const skipQuestionBtn = document.getElementById('skip-question');
         const answerInput = document.getElementById('answer-input');
         
         if (submitAnswerBtn) {
-            // Удаляем старые обработчики, если есть
             const newSubmitBtn = submitAnswerBtn.cloneNode(true);
             submitAnswerBtn.parentNode.replaceChild(newSubmitBtn, submitAnswerBtn);
             
-            // Добавляем новый обработчик
             newSubmitBtn.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -81,9 +75,7 @@ export class ModalManager {
             const newAnswerInput = answerInput.cloneNode(true);
             answerInput.parentNode.replaceChild(newAnswerInput, answerInput);
             
-            // ИСПРАВЛЕНИЕ: Убираем все ограничения на ввод символов, включая пробелы
             newAnswerInput.addEventListener('keypress', (e) => {
-                // Разрешаем ввод ВСЕХ символов, включая пробелы
                 if (e.key === 'Enter') {
                     e.preventDefault();
                     this.log('🔥 Enter в поле ввода ответа');
@@ -91,7 +83,6 @@ export class ModalManager {
                 }
             });
             
-            // Убираем стилизацию ошибки при вводе
             newAnswerInput.addEventListener('input', (e) => {
                 if (e.target.style.borderColor === 'rgb(231, 76, 60)') {
                     e.target.style.borderColor = '';
@@ -101,7 +92,6 @@ export class ModalManager {
             this.log('✅ Обработчики поля ввода установлены');
         }
         
-        // Обработчики для модального окна сообщений
         const closeMessageBtn = document.getElementById('close-message');
         if (closeMessageBtn) {
             const newCloseBtn = closeMessageBtn.cloneNode(true);
@@ -116,7 +106,6 @@ export class ModalManager {
             this.log('✅ Обработчик кнопки "OK" сообщения установлен');
         }
         
-        // Обработчики для модального окна результатов
         const closeResultsBtn = document.getElementById('close-results');
         if (closeResultsBtn) {
             const newCloseResultsBtn = closeResultsBtn.cloneNode(true);
@@ -131,12 +120,10 @@ export class ModalManager {
             this.log('✅ Обработчик кнопки "Закрыть" результатов установлен');
         }
         
-        // Обновляем ссылки на элементы после замены
         this.questionModal = document.getElementById('question-modal');
         this.messageModal = document.getElementById('message-modal');
         this.resultsModal = document.getElementById('results-modal');
         
-        // Закрытие модальных окон по клику вне области
         [this.questionModal, this.messageModal, this.resultsModal].forEach(modal => {
             if (modal) {
                 modal.addEventListener('click', (e) => {
@@ -148,7 +135,6 @@ export class ModalManager {
             }
         });
         
-        // Закрытие по клавише Escape
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && this.currentModal) {
                 this.log('🔥 Нажата клавиша Escape');
@@ -163,7 +149,6 @@ export class ModalManager {
         this.log('📋 Показ вопроса:', questionText);
         this.log('📋 Callback передан:', !!answerCallback);
         
-        // КРИТИЧЕСКИ ВАЖНО: Полное закрытие всех модальных окон
         this.forceCloseAll();
         
         const questionTextElement = document.getElementById('question-text');
@@ -179,13 +164,11 @@ export class ModalManager {
             answerInput.style.borderColor = '';
         }
         
-        // КРИТИЧЕСКИ ВАЖНО: Сохраняем callback
         this.answerCallback = answerCallback;
         this.log('📋 Callback сохранен:', !!this.answerCallback);
         
         this.showModal(this.questionModal);
         
-        // Фокус на поле ввода
         setTimeout(() => {
             const currentAnswerInput = document.getElementById('answer-input');
             if (currentAnswerInput) {
@@ -195,6 +178,7 @@ export class ModalManager {
         }, 100);
     }
 
+    // ИСПРАВЛЕННЫЙ метод показа сообщений с правильной логикой автозакрытия
     showMessage(title, message, callback = null, options = {}) {
         const { 
             autoClose = false, 
@@ -204,7 +188,6 @@ export class ModalManager {
         
         this.log(`💬 Показ сообщения: ${title} (автозакрытие: ${autoClose}, бот: ${isBot})`);
         
-        // КРИТИЧЕСКИ ВАЖНО: Полное закрытие всех модальных окон
         this.forceCloseAll();
         
         const titleElement = document.getElementById('message-title');
@@ -215,27 +198,27 @@ export class ModalManager {
         }
         
         if (messageElement) {
-            // Обрабатываем переносы строк в сообщении
             messageElement.innerHTML = message.replace(/\n/g, '<br>');
         }
         
         this.messageCallback = callback;
         this.showModal(this.messageModal);
         
-        // Автозакрытие для ботов или при правильном ответе игрока
+        // ИСПРАВЛЕНИЕ: автозакрытие только если явно указано
         if (autoClose) {
             this.log(`💬 Автозакрытие через ${autoCloseDelay}ms`);
             this.autoCloseTimer = setTimeout(() => {
                 this.log('💬 Автозакрытие модального окна');
                 this.closeCurrentModal();
             }, autoCloseDelay);
+        } else {
+            this.log('💬 Автозакрытие ОТКЛЮЧЕНО - ждем клика пользователя');
         }
     }
 
     showResults(resultsHTML, callback = null) {
         this.log('🏆 Показ результатов игры');
         
-        // КРИТИЧЕСКИ ВАЖНО: Полное закрытие всех модальных окон
         this.forceCloseAll();
         
         const resultsContent = document.getElementById('results-content');
@@ -250,14 +233,12 @@ export class ModalManager {
     showModal(modal) {
         if (!modal) return false;
         
-        // Убеждаемся что предыдущие модальные окна закрыты
         this.forceCloseAll();
         
         this.currentModal = modal;
         modal.classList.add('active');
         modal.style.display = 'flex';
         
-        // Блокируем прокрутку страницы
         document.body.style.overflow = 'hidden';
         
         this.log(`🪟 Модальное окно ${modal.id} показано`);
@@ -266,13 +247,11 @@ export class ModalManager {
     }
 
     forceCloseAll() {
-        // Очищаем таймеры
         if (this.autoCloseTimer) {
             clearTimeout(this.autoCloseTimer);
             this.autoCloseTimer = null;
         }
         
-        // Принудительно закрываем все модальные окна
         [this.questionModal, this.messageModal, this.resultsModal].forEach(modal => {
             if (modal) {
                 modal.classList.remove('active');
@@ -280,17 +259,13 @@ export class ModalManager {
             }
         });
         
-        // Восстанавливаем прокрутку
         document.body.style.overflow = '';
-        
-        // ВАЖНО: НЕ сбрасываем callbacks здесь, только в closeCurrentModal
         this.currentModal = null;
         
         this.log('🧹 Все модальные окна принудительно закрыты');
     }
 
     closeCurrentModal() {
-        // Очищаем таймер автозакрытия
         if (this.autoCloseTimer) {
             clearTimeout(this.autoCloseTimer);
             this.autoCloseTimer = null;
@@ -304,10 +279,8 @@ export class ModalManager {
         this.currentModal.classList.remove('active');
         this.currentModal.style.display = 'none';
         
-        // Восстанавливаем прокрутку страницы
         document.body.style.overflow = '';
         
-        // Выполняем callback в зависимости от типа модального окна
         if (this.currentModal === this.messageModal && this.messageCallback) {
             const callback = this.messageCallback;
             this.messageCallback = null;
@@ -327,6 +300,7 @@ export class ModalManager {
         this.log(`🪟 Модальное окно ${currentModalId} закрыто`);
     }
 
+    // ИСПРАВЛЕННЫЙ метод отправки ответа
     submitAnswer() {
         this.log('📤 Попытка отправки ответа...');
         
@@ -352,11 +326,10 @@ export class ModalManager {
             return;
         }
         
-        // Сохраняем callback перед закрытием
         const callback = this.answerCallback;
         this.answerCallback = null;
         
-        // Закрываем модальное окно
+        // ВАЖНО: закрываем окно ДО вызова callback
         this.currentModal.classList.remove('active');
         this.currentModal.style.display = 'none';
         document.body.style.overflow = '';
@@ -364,7 +337,6 @@ export class ModalManager {
         
         this.log(`✅ Ответ отправлен: "${answer}"`);
         
-        // Вызываем callback с небольшой задержкой
         setTimeout(() => {
             this.log(`📞 Вызываем callback с ответом: "${answer}"`);
             callback(answer);
@@ -374,11 +346,9 @@ export class ModalManager {
     skipQuestion() {
         this.log('⏭️ Пропуск вопроса');
         
-        // Сохраняем callback перед закрытием
         const callback = this.answerCallback;
         this.answerCallback = null;
         
-        // Закрываем модальное окно
         if (this.currentModal) {
             this.currentModal.classList.remove('active');
             this.currentModal.style.display = 'none';
@@ -386,7 +356,6 @@ export class ModalManager {
             this.currentModal = null;
         }
         
-        // Вызываем callback с пустым ответом
         if (callback) {
             setTimeout(() => {
                 this.log('📞 Вызываем callback с пустым ответом (пропуск)');
@@ -403,7 +372,7 @@ export class ModalManager {
         return this.currentModal;
     }
 
-    // Утилитарные методы для разных типов сообщений
+    // ИСПРАВЛЕННЫЕ утилитарные методы
     showSuccessMessage(message, callback = null, autoClose = true) {
         this.showMessage(
             'Правильно! 🎉', 
@@ -413,12 +382,13 @@ export class ModalManager {
         );
     }
 
+    // ИСПРАВЛЕНИЕ: сообщения об ошибках НЕ закрываются автоматически
     showErrorMessage(message, callback = null, autoClose = false) {
         this.showMessage(
             'Неправильно 😔', 
             message, 
             callback, 
-            { autoClose, autoCloseDelay: 1000 }
+            { autoClose: false } // ПРИНУДИТЕЛЬНО отключаем автозакрытие
         );
     }
 
@@ -435,7 +405,6 @@ export class ModalManager {
         this.showMessage(title, message, callback, { autoClose: false });
     }
 
-    // Отладочные методы
     getDebugInfo() {
         return {
             initialized: this.initialized,
@@ -459,25 +428,21 @@ export class ModalManager {
         };
     }
 
-    // Экстренный сброс всех состояний
     emergencyReset() {
         this.log('🚨 ЭКСТРЕННЫЙ СБРОС ModalManager');
         
         this.forceCloseAll();
         
-        // Сбрасываем все callbacks
         this.answerCallback = null;
         this.messageCallback = null;
         this.resultsCallback = null;
         
-        // Переинициализация обработчиков
         setTimeout(() => {
             this.setupEventListeners();
             this.log('✅ ModalManager сброшен и переинициализирован');
         }, 100);
     }
 
-    // Тестовый метод для проверки кнопки ответить
     testSubmitButton() {
         this.log('🧪 ТЕСТ КНОПКИ ОТВЕТИТЬ');
         
@@ -493,7 +458,6 @@ export class ModalManager {
         this.log('Style display:', submitBtn.style.display);
         this.log('Parent element:', submitBtn.parentElement);
         
-        // Проверяем, есть ли обработчики
         submitBtn.click();
         
         return true;
