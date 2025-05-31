@@ -1,286 +1,363 @@
-import { GAME_CONFIG } from '../core/Constants.js';
-
 export class CanvasRenderer {
     constructor() {
         this.canvas = null;
         this.ctx = null;
-        this.cellPositions = [];
-        this.animationFrame = null;
         this.initialized = false;
+        this.debug = true;
+        
+        // Настройки игрового поля
+        this.boardConfig = {
+            canvasWidth: 800,
+            canvasHeight: 600,
+            cellsPerRow: 12,
+            cellsPerColumn: 10, // 120 клеток всего
+            cellSize: 45, // Уменьшен для лучшего размещения
+            borderWidth: 3,
+            borderColor: '#2c3e50',
+            backgroundColor: '#ecf0f1'
+        };
+        
+        // Рассчитываем отступы для центрирования
+        this.calculatePadding();
+    }
+
+    log(...args) {
+        if (this.debug) {
+            console.log('[CanvasRenderer]', ...args);
+        }
+    }
+
+    error(...args) {
+        console.error('[CanvasRenderer]', ...args);
+    }
+
+    calculatePadding() {
+        const { canvasWidth, canvasHeight, cellsPerRow, cellsPerColumn, cellSize } = this.boardConfig;
+        
+        // Общий размер сетки
+        const gridWidth = cellsPerRow * cellSize;
+        const gridHeight = cellsPerColumn * cellSize;
+        
+        // Рассчитываем равномерные отступы
+        this.boardConfig.paddingX = (canvasWidth - gridWidth) / 2;
+        this.boardConfig.paddingY = (canvasHeight - gridHeight) / 2;
+        
+        this.log(`Рассчитаны отступы: X=${this.boardConfig.paddingX}, Y=${this.boardConfig.paddingY}`);
+        this.log(`Размер сетки: ${gridWidth}x${gridHeight}, Canvas: ${canvasWidth}x${canvasHeight}`);
     }
 
     setupCanvas() {
-        this.canvas = document.getElementById('game-board');
-        if (!this.canvas) {
-            console.error('Canvas элемент не найден');
+        try {
+            this.canvas = document.getElementById('game-board');
+            if (!this.canvas) {
+                this.error('Canvas элемент не найден');
+                return false;
+            }
+
+            this.ctx = this.canvas.getContext('2d');
+            if (!this.ctx) {
+                this.error('Не удалось получить 2D контекст');
+                return false;
+            }
+
+            // Устанавливаем размеры canvas
+            this.canvas.width = this.boardConfig.canvasWidth;
+            this.canvas.height = this.boardConfig.canvasHeight;
+            
+            // Применяем стили для адаптивности
+            this.canvas.style.maxWidth = '100%';
+            this.canvas.style.height = 'auto';
+            this.canvas.style.border = `${this.boardConfig.borderWidth}px solid ${this.boardConfig.borderColor}`;
+            this.canvas.style.borderRadius = '10px';
+            this.canvas.style.backgroundColor = this.boardConfig.backgroundColor;
+
+            this.initialized = true;
+            this.log('✅ Canvas инициализирован');
+            
+            return true;
+        } catch (error) {
+            this.error('Ошибка инициализации Canvas:', error);
             return false;
-        }
-
-        this.ctx = this.canvas.getContext('2d');
-        this.calculateCellPositions();
-        this.initialized = true;
-        
-        console.log('Canvas настроен');
-        return true;
-    }
-
-    calculateCellPositions() {
-        const { cellSize, cellsPerRow } = GAME_CONFIG;
-        this.cellPositions = [];
-        
-        for (let i = 0; i < GAME_CONFIG.boardSize; i++) {
-            const row = Math.floor(i / cellsPerRow);
-            const col = i % cellsPerRow;
-            
-            // Зигзагообразное расположение
-            const x = row % 2 === 0 ? col : (cellsPerRow - 1 - col);
-            const y = row;
-            
-            this.cellPositions.push({
-                x: x * cellSize + cellSize / 2 + 20,
-                y: y * cellSize + cellSize / 2 + 20,
-                cellNumber: i
-            });
         }
     }
 
     drawBoard(gameBoard) {
-        if (!this.initialized) return;
+        if (!this.initialized) {
+            this.error('Canvas не инициализирован');
+            return;
+        }
 
-        this.clearCanvas();
-        this.drawCells();
-        this.drawSpecialCells(gameBoard);
-        this.drawCellNumbers();
-    }
-
-    clearCanvas() {
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        
-        // Фон
-        this.ctx.fillStyle = '#f8f9fa';
-        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        try {
+            // Очищаем canvas
+            this.ctx.clearRect(0, 0, this.boardConfig.canvasWidth, this.boardConfig.canvasHeight);
+            
+            // Заливаем фон
+            this.ctx.fillStyle = this.boardConfig.backgroundColor;
+            this.ctx.fillRect(0, 0, this.boardConfig.canvasWidth, this.boardConfig.canvasHeight);
+            
+            // Рисуем клетки с равномерными отступами
+            this.drawCells();
+            
+            // Рисуем лестницы и змеи
+            if (gameBoard) {
+                this.drawSnakesAndLadders(gameBoard);
+            }
+            
+        } catch (error) {
+            this.error('Ошибка отрисовки доски:', error);
+        }
     }
 
     drawCells() {
-        const { cellSize } = GAME_CONFIG;
+        const { cellSize, cellsPerRow, cellsPerColumn, paddingX, paddingY } = this.boardConfig;
         
-        this.cellPositions.forEach((pos, index) => {
-            const x = pos.x - cellSize / 2;
-            const y = pos.y - cellSize / 2;
-            
-            // Чередующиеся цвета клеток
-            this.ctx.fillStyle = (index % 2 === 0) ? '#ffffff' : '#f0f0f0';
-            this.ctx.fillRect(x, y, cellSize, cellSize);
-            
-            // Граница клетки
-            this.ctx.strokeStyle = '#cccccc';
-            this.ctx.lineWidth = 1;
-            this.ctx.strokeRect(x, y, cellSize, cellSize);
-        });
+        for (let row = 0; row < cellsPerColumn; row++) {
+            for (let col = 0; col < cellsPerRow; col++) {
+                // Вычисляем номер клетки (змейка)
+                let cellNumber;
+                if (row % 2 === 0) {
+                    // Четные строки: слева направо
+                    cellNumber = row * cellsPerRow + col + 1;
+                } else {
+                    // Нечетные строки: справа налево
+                    cellNumber = row * cellsPerRow + (cellsPerRow - col);
+                }
+                
+                // Пропускаем клетки больше 120
+                if (cellNumber > 120) continue;
+                
+                // Рассчитываем позицию с учетом отступов
+                const x = paddingX + col * cellSize;
+                const y = paddingY + (cellsPerColumn - 1 - row) * cellSize; // Инвертируем Y для правильного порядка
+                
+                this.drawCell(x, y, cellSize, cellNumber);
+            }
+        }
     }
 
-    drawSpecialCells(gameBoard) {
-        const { ladders, snakes } = gameBoard.getSpecialCells();
+    drawCell(x, y, size, number) {
+        // Цвет клетки в зависимости от типа
+        let cellColor = '#ffffff';
+        let textColor = '#2c3e50';
+        let borderColor = '#bdc3c7';
         
-        // Рисуем лестницы (зеленые)
-        ladders.forEach(ladder => {
-            this.drawConnection(ladder.start, ladder.end, '#27ae60', '↗');
-        });
+        // Специальные клетки
+        if (number === 1) {
+            cellColor = '#2ecc71'; // Стартовая клетка - зеленая
+            textColor = '#ffffff';
+        } else if (number === 120) {
+            cellColor = '#e74c3c'; // Финишная клетка - красная
+            textColor = '#ffffff';
+        } else if (this.isSpecialCell(number)) {
+            cellColor = '#f39c12'; // Клетки с лестницами/змеями - оранжевые
+        }
         
-        // Рисуем змей (красные)
-        snakes.forEach(snake => {
-            this.drawConnection(snake.start, snake.end, '#e74c3c', '↘');
-        });
-    }
-
-    drawConnection(startCell, endCell, color, symbol) {
-        const startPos = this.cellPositions[startCell];
-        const endPos = this.cellPositions[endCell];
+        // Рисуем фон клетки
+        this.ctx.fillStyle = cellColor;
+        this.ctx.fillRect(x + 1, y + 1, size - 2, size - 2);
         
-        if (!startPos || !endPos) return;
+        // Рисуем границу клетки
+        this.ctx.strokeStyle = borderColor;
+        this.ctx.lineWidth = 1;
+        this.ctx.strokeRect(x, y, size, size);
         
-        // Линия соединения
-        this.ctx.beginPath();
-        this.ctx.moveTo(startPos.x, startPos.y);
-        this.ctx.lineTo(endPos.x, endPos.y);
-        this.ctx.strokeStyle = color;
-        this.ctx.lineWidth = 3;
-        this.ctx.stroke();
-        
-        // Символ на начальной клетке
-        this.ctx.fillStyle = color;
-        this.ctx.font = 'bold 20px Arial';
+        // Рисуем номер клетки
+        this.ctx.fillStyle = textColor;
+        this.ctx.font = 'bold 12px Arial';
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
-        this.ctx.fillText(symbol, startPos.x, startPos.y);
+        this.ctx.fillText(number.toString(), x + size / 2, y + size / 2);
     }
 
-    drawCellNumbers() {
-        this.ctx.fillStyle = '#666666';
-        this.ctx.font = '12px Arial';
-        this.ctx.textAlign = 'center';
-        this.ctx.textBaseline = 'top';
+    isSpecialCell(number) {
+        // Проверяем, есть ли на этой клетке лестница или змея
+        const specialCells = [
+            // Лестницы (начало)
+            4, 9, 21, 28, 36, 51, 71, 80,
+            // Змеи (начало)
+            16, 47, 49, 56, 62, 64, 87, 93, 95, 98
+        ];
+        return specialCells.includes(number);
+    }
+
+    drawSnakesAndLadders(gameBoard) {
+        if (!gameBoard || !gameBoard.snakesAndLadders) return;
         
-        this.cellPositions.forEach((pos, index) => {
-            const x = pos.x - GAME_CONFIG.cellSize / 2 + 5;
-            const y = pos.y - GAME_CONFIG.cellSize / 2 + 2;
-            this.ctx.fillText((index + 1).toString(), x, y);
+        const { cellSize, cellsPerRow, paddingX, paddingY } = this.boardConfig;
+        
+        gameBoard.snakesAndLadders.forEach(({ from, to, type }) => {
+            const fromPos = this.getCellPosition(from);
+            const toPos = this.getCellPosition(to);
+            
+            if (type === 'ladder') {
+                this.drawLadder(fromPos, toPos);
+            } else if (type === 'snake') {
+                this.drawSnake(fromPos, toPos);
+            }
         });
+    }
+
+    getCellPosition(cellNumber) {
+        const { cellSize, cellsPerRow, cellsPerColumn, paddingX, paddingY } = this.boardConfig;
+        
+        // Преобразуем номер клетки в координаты
+        const row = Math.floor((cellNumber - 1) / cellsPerRow);
+        let col;
+        
+        if (row % 2 === 0) {
+            // Четные строки: слева направо
+            col = (cellNumber - 1) % cellsPerRow;
+        } else {
+            // Нечетные строки: справа налево
+            col = cellsPerRow - 1 - ((cellNumber - 1) % cellsPerRow);
+        }
+        
+        const x = paddingX + col * cellSize + cellSize / 2;
+        const y = paddingY + (cellsPerColumn - 1 - row) * cellSize + cellSize / 2;
+        
+        return { x, y };
+    }
+
+    drawLadder(fromPos, toPos) {
+        this.ctx.strokeStyle = '#27ae60';
+        this.ctx.lineWidth = 4;
+        this.ctx.setLineDash([]);
+        
+        // Рисуем основную линию лестницы
+        this.ctx.beginPath();
+        this.ctx.moveTo(fromPos.x, fromPos.y);
+        this.ctx.lineTo(toPos.x, toPos.y);
+        this.ctx.stroke();
+        
+        // Рисуем перекладины лестницы
+        const steps = 5;
+        for (let i = 1; i < steps; i++) {
+            const ratio = i / steps;
+            const stepX1 = fromPos.x + (toPos.x - fromPos.x) * ratio - 8;
+            const stepX2 = fromPos.x + (toPos.x - fromPos.x) * ratio + 8;
+            const stepY = fromPos.y + (toPos.y - fromPos.y) * ratio;
+            
+            this.ctx.beginPath();
+            this.ctx.moveTo(stepX1, stepY);
+            this.ctx.lineTo(stepX2, stepY);
+            this.ctx.stroke();
+        }
+    }
+
+    drawSnake(fromPos, toPos) {
+        this.ctx.strokeStyle = '#e74c3c';
+        this.ctx.lineWidth = 4;
+        this.ctx.setLineDash([]);
+        
+        // Рисуем изогнутую линию змеи
+        this.ctx.beginPath();
+        this.ctx.moveTo(fromPos.x, fromPos.y);
+        
+        // Создаем кривую Безье для эффекта змеи
+        const midX = (fromPos.x + toPos.x) / 2;
+        const midY = (fromPos.y + toPos.y) / 2;
+        const controlX = midX + (Math.random() - 0.5) * 40;
+        const controlY = midY + (Math.random() - 0.5) * 40;
+        
+        this.ctx.quadraticCurveTo(controlX, controlY, toPos.x, toPos.y);
+        this.ctx.stroke();
+        
+        // Рисуем голову змеи
+        this.ctx.fillStyle = '#c0392b';
+        this.ctx.beginPath();
+        this.ctx.arc(toPos.x, toPos.y, 6, 0, 2 * Math.PI);
+        this.ctx.fill();
     }
 
     drawPlayers(players) {
         if (!this.initialized || !players) return;
-
-        players.forEach((player, index) => {
-            this.drawPlayer(player, index);
-        });
-    }
-
-    drawPlayer(player, playerIndex) {
-        const position = this.cellPositions[player.position];
-        if (!position) return;
-
-        const { playerSize } = GAME_CONFIG;
-        const offset = this.getPlayerOffset(playerIndex, player.position);
         
-        const x = position.x + offset.x;
-        const y = position.y + offset.y;
-        
-        // Тень игрока
-        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
-        this.ctx.beginPath();
-        this.ctx.arc(x + 2, y + 2, playerSize / 2, 0, 2 * Math.PI);
-        this.ctx.fill();
-        
-        // Игрок
-        this.ctx.fillStyle = player.color;
-        this.ctx.beginPath();
-        this.ctx.arc(x, y, playerSize / 2, 0, 2 * Math.PI);
-        this.ctx.fill();
-        
-        // Граница игрока
-        this.ctx.strokeStyle = '#ffffff';
-        this.ctx.lineWidth = 2;
-        this.ctx.stroke();
-        
-        // Номер игрока
-        this.ctx.fillStyle = '#ffffff';
-        this.ctx.font = 'bold 12px Arial';
-        this.ctx.textAlign = 'center';
-        this.ctx.textBaseline = 'middle';
-        this.ctx.fillText((playerIndex + 1).toString(), x, y);
-    }
-
-    getPlayerOffset(playerIndex, position) {
-        const playersOnCell = this.getPlayersOnCell(position);
-        const playerPosition = playersOnCell.indexOf(playerIndex);
-        
-        const offsets = [
-            { x: 0, y: 0 },
-            { x: -15, y: -15 },
-            { x: 15, y: -15 },
-            { x: 0, y: -25 }
-        ];
-        
-        return offsets[playerPosition] || { x: 0, y: 0 };
-    }
-
-    getPlayersOnCell(position) {
-        // Эта функция должна быть реализована с учетом всех игроков
-        // Для упрощения возвращаем пустой массив
-        return [];
-    }
-
-    animatePlayerMove(player, fromPosition, toPosition, duration = 1000) {
-        if (!this.initialized) return Promise.resolve();
-
-        return new Promise((resolve) => {
-            const startPos = this.cellPositions[fromPosition];
-            const endPos = this.cellPositions[toPosition];
-            
-            if (!startPos || !endPos) {
-                resolve();
-                return;
-            }
-
-            const startTime = performance.now();
-            
-            const animate = (currentTime) => {
-                const elapsed = currentTime - startTime;
-                const progress = Math.min(elapsed / duration, 1);
-                
-                // Easing function (ease-out)
-                const easeProgress = 1 - Math.pow(1 - progress, 3);
-                
-                const currentX = startPos.x + (endPos.x - startPos.x) * easeProgress;
-                const currentY = startPos.y + (endPos.y - startPos.y) * easeProgress;
-                
-                // Перерисовываем только область движения
-                this.redrawPlayerArea(player, currentX, currentY);
-                
-                if (progress < 1) {
-                    this.animationFrame = requestAnimationFrame(animate);
-                } else {
-                    resolve();
+        try {
+            players.forEach((player, index) => {
+                if (player.position >= 0 && player.position < 120) {
+                    this.drawPlayer(player, index);
                 }
-            };
-            
-            this.animationFrame = requestAnimationFrame(animate);
-        });
-    }
-
-    redrawPlayerArea(player, x, y) {
-        // Простая реализация - полная перерисовка
-        // В продвинутой версии можно оптимизировать
-        this.clearCanvas();
-        this.drawBoard();
-        
-        // Рисуем игрока в новой позиции
-        const { playerSize } = GAME_CONFIG;
-        
-        this.ctx.fillStyle = player.color;
-        this.ctx.beginPath();
-        this.ctx.arc(x, y, playerSize / 2, 0, 2 * Math.PI);
-        this.ctx.fill();
-        
-        this.ctx.strokeStyle = '#ffffff';
-        this.ctx.lineWidth = 2;
-        this.ctx.stroke();
-    }
-
-    highlightCell(cellIndex, color = '#ffd700') {
-        const position = this.cellPositions[cellIndex];
-        if (!position) return;
-
-        const { cellSize } = GAME_CONFIG;
-        const x = position.x - cellSize / 2;
-        const y = position.y - cellSize / 2;
-        
-        this.ctx.strokeStyle = color;
-        this.ctx.lineWidth = 4;
-        this.ctx.strokeRect(x, y, cellSize, cellSize);
-    }
-
-    cancelAnimation() {
-        if (this.animationFrame) {
-            cancelAnimationFrame(this.animationFrame);
-            this.animationFrame = null;
+            });
+        } catch (error) {
+            this.error('Ошибка отрисовки игроков:', error);
         }
     }
 
-    resize(width, height) {
-        if (!this.canvas) return;
+    drawPlayer(player, index) {
+        const pos = this.getCellPosition(player.position + 1);
+        const { cellSize } = this.boardConfig;
         
-        this.canvas.width = width;
-        this.canvas.height = height;
-        this.calculateCellPositions();
+        // Смещение для нескольких игроков на одной клетке
+        const offsetX = (index % 2) * 8 - 4;
+        const offsetY = Math.floor(index / 2) * 8 - 4;
+        
+        const x = pos.x + offsetX;
+        const y = pos.y + offsetY;
+        
+        // Рисуем фишку игрока
+        this.ctx.fillStyle = player.color;
+        this.ctx.strokeStyle = '#2c3e50';
+        this.ctx.lineWidth = 2;
+        
+        this.ctx.beginPath();
+        this.ctx.arc(x, y, 12, 0, 2 * Math.PI);
+        this.ctx.fill();
+        this.ctx.stroke();
+        
+        // Рисуем инициал имени или номер игрока
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.font = 'bold 10px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        
+        const displayText = player.name.charAt(0).toUpperCase();
+        this.ctx.fillText(displayText, x, y);
     }
 
-    getCanvasSize() {
+    // Метод для изменения размера canvas при изменении размера окна
+    resize() {
+        if (!this.initialized) return;
+        
+        const container = this.canvas.parentElement;
+        if (!container) return;
+        
+        const containerWidth = container.clientWidth - 40; // Учитываем padding
+        const aspectRatio = this.boardConfig.canvasHeight / this.boardConfig.canvasWidth;
+        
+        if (containerWidth < this.boardConfig.canvasWidth) {
+            this.canvas.style.width = containerWidth + 'px';
+            this.canvas.style.height = (containerWidth * aspectRatio) + 'px';
+        } else {
+            this.canvas.style.width = this.boardConfig.canvasWidth + 'px';
+            this.canvas.style.height = this.boardConfig.canvasHeight + 'px';
+        }
+    }
+
+    // Получение координат клетки для внешних модулей
+    getCellCoordinates(cellNumber) {
+        return this.getCellPosition(cellNumber);
+    }
+
+    // Отладочная информация
+    getDebugInfo() {
         return {
-            width: this.canvas ? this.canvas.width : 0,
-            height: this.canvas ? this.canvas.height : 0
+            initialized: this.initialized,
+            canvasSize: {
+                width: this.canvas?.width,
+                height: this.canvas?.height
+            },
+            boardConfig: this.boardConfig,
+            padding: {
+                x: this.boardConfig.paddingX,
+                y: this.boardConfig.paddingY
+            }
         };
     }
-}
 
+    // Очистка canvas
+    clear() {
+        if (this.initialized && this.ctx) {
+            this.ctx.clearRect(0, 0, this.boardConfig.canvasWidth, this.boardConfig.canvasHeight);
+        }
+    }
+}
