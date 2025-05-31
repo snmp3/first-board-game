@@ -451,7 +451,6 @@ export class Game {
             
             this.log(`🤖 Бот отвечает: "${answer}" (${isCorrect ? 'правильно' : 'неправильно'})`);
             
-            // ИСПРАВЛЕНИЕ: Сначала показываем ответ бота, потом обрабатываем
             currentPlayer.questionsAnswered++;
             
             if (isCorrect) {
@@ -463,14 +462,14 @@ export class Game {
                     () => this.nextTurn()
                 );
             } else {
-                // ИСПРАВЛЕНИЕ: Устанавливаем пропуск хода для бота ТАК ЖЕ как для игрока
+                // ИСПРАВЛЕНИЕ: Ставим флаг пропуска следующего хода
                 this.gameState.setSkipTurns(currentPlayer.id, 1);
                 
                 // Для бота: автозакрытие через 1 секунду
                 this.modalManager.showBotMessage(
                     'Бот ответил неправильно 🤖😔',
-                    `Вопрос: ${this.currentQuestion.text}\nОтвет бота: ${answer}\nПравильный ответ: ${this.currentQuestion.answer}\nБот пропускает следующий ход.`,
-                    () => this.nextTurnAfterWrongAnswer()
+                    `Вопрос: ${this.currentQuestion.text}\nОтвет бота: ${answer}\nПравильный ответ: ${this.currentQuestion.answer}\nБот пропустит следующий ход.`,
+                    () => this.nextTurn()
                 );
             }
 
@@ -505,12 +504,13 @@ export class Game {
                     true // autoClose = true
                 );
             } else {
+                // ИСПРАВЛЕНИЕ: Ставим флаг пропуска следующего хода
                 this.gameState.setSkipTurns(currentPlayer.id, 1);
                 
                 // Для игрока: НЕТ автозакрытия при неправильном ответе
                 this.modalManager.showErrorMessage(
-                    `Правильный ответ: ${this.currentQuestion.answer}\nВы пропускаете следующий ход.`,
-                    () => this.nextTurnAfterWrongAnswer(),
+                    `Правильный ответ: ${this.currentQuestion.answer}\nВы пропустите следующий ход.`,
+                    () => this.nextTurn(), // ИСПРАВЛЕНИЕ: вызываем обычный nextTurn
                     false // autoClose = false
                 );
             }
@@ -523,32 +523,10 @@ export class Game {
         }
     }
 
-    nextTurnAfterWrongAnswer() {
-        try {
-            // ИСПРАВЛЕНИЕ: Используем правильную логику для всех игроков (включая ботов)
-            this.gameState.forceNextPlayer();
-            
-            this.updateCurrentPlayerDisplay();
-            this.updateGameControlsDisplay();
-            this.updatePlayersDisplay();
-            this.updatePlayersGameDisplay();
-            
-            this.dice = null;
-            this.updateDiceDisplay();
-
-            const currentPlayer = this.gameState.getCurrentPlayer();
-            this.log(`🔄 Переход хода после неправильного ответа к: ${currentPlayer?.name}`);
-
-            if (currentPlayer && currentPlayer.isBot) {
-                setTimeout(() => this.rollDice(), 1500);
-            }
-        } catch (error) {
-            this.error('Ошибка смены хода после неправильного ответа:', error);
-        }
-    }
-
+    // ЕДИНСТВЕННЫЙ метод смены хода (убираем nextTurnAfterWrongAnswer)
     nextTurn() {
         try {
+            // nextPlayer автоматически обработает пропуск хода
             this.gameState.nextPlayer();
             
             this.updateCurrentPlayerDisplay();
@@ -675,7 +653,7 @@ export class Game {
         
         container.innerHTML = this.gameState.players.map((player, index) => {
             const skipTurns = this.gameState.getSkipTurns(player.id);
-            const skipInfo = skipTurns > 0 ? ` (Пропускает: ${skipTurns})` : '';
+            const skipInfo = skipTurns > 0 ? ` (Пропустит: ${skipTurns} ход)` : '';
             
             return `
                 <div class="player-item" style="border-left: 4px solid ${player.color}">
@@ -711,7 +689,7 @@ export class Game {
                         <span>${player.name}${isCurrentPlayer ? ' ←' : ''}</span>
                         <span>${player.position + 1}/120</span>
                     </div>
-                    ${skipTurns > 0 ? `<small style="color: #e74c3c;">Пропускает: ${skipTurns} ход(ов)</small>` : ''}
+                    ${skipTurns > 0 ? `<small style="color: #e74c3c;">Пропустит: ${skipTurns} ход</small>` : ''}
                 </div>
             `;
         }).join('');
@@ -723,7 +701,7 @@ export class Game {
         
         if (element && currentPlayer) {
             const skipTurns = this.gameState.getSkipTurns(currentPlayer.id);
-            const skipText = skipTurns > 0 ? ` (Пропускает: ${skipTurns})` : '';
+            const skipText = skipTurns > 0 ? ` (Пропустит: ${skipTurns} ход)` : '';
             
             element.textContent = `Ход: ${currentPlayer.name}${skipText}`;
             element.style.color = currentPlayer.color;
