@@ -262,116 +262,76 @@ export class CanvasRenderer {
         return { x, y };
     }
 
+    // УПРОЩЕННАЯ отрисовка лестницы - тонкие прямые линии
     drawLadder(fromPos, toPos) {
-        // Основная линия лестницы
         this.ctx.strokeStyle = '#27ae60';
-        this.ctx.lineWidth = 6; // Увеличена толщина для лучшей видимости
+        this.ctx.lineWidth = 2; // Тонкая линия
         this.ctx.setLineDash([]);
         
-        // Рисуем боковые стойки лестницы
-        const offset = 8;
-        
-        // Левая стойка
-        this.ctx.beginPath();
-        this.ctx.moveTo(fromPos.x - offset, fromPos.y);
-        this.ctx.lineTo(toPos.x - offset, toPos.y);
-        this.ctx.stroke();
-        
-        // Правая стойка
-        this.ctx.beginPath();
-        this.ctx.moveTo(fromPos.x + offset, fromPos.y);
-        this.ctx.lineTo(toPos.x + offset, toPos.y);
-        this.ctx.stroke();
-        
-        // Рисуем перекладины лестницы
-        this.ctx.strokeStyle = '#229954';
-        this.ctx.lineWidth = 4;
-        
-        const steps = Math.max(3, Math.floor(Math.abs(toPos.y - fromPos.y) / 25));
-        for (let i = 1; i < steps; i++) {
-            const ratio = i / steps;
-            const stepX1 = fromPos.x + (toPos.x - fromPos.x) * ratio - offset;
-            const stepX2 = fromPos.x + (toPos.x - fromPos.x) * ratio + offset;
-            const stepY = fromPos.y + (toPos.y - fromPos.y) * ratio;
-            
-            this.ctx.beginPath();
-            this.ctx.moveTo(stepX1, stepY);
-            this.ctx.lineTo(stepX2, stepY);
-            this.ctx.stroke();
-        }
-        
-        // Стрелка вверх в конце лестницы
-        this.drawArrow(toPos.x, toPos.y - 15, 'up', '#27ae60');
-    }
-
-    drawSnake(fromPos, toPos) {
-        this.ctx.strokeStyle = '#e74c3c';
-        this.ctx.lineWidth = 8; // Увеличена толщина
-        this.ctx.setLineDash([]);
-        
-        // Рисуем изогнутую линию змеи с несколькими сегментами
+        // Рисуем простую прямую линию от начала к концу
         this.ctx.beginPath();
         this.ctx.moveTo(fromPos.x, fromPos.y);
-        
-        // Создаем более плавную кривую змеи с несколькими контрольными точками
-        const segments = 3;
-        const deltaX = (toPos.x - fromPos.x) / segments;
-        const deltaY = (toPos.y - fromPos.y) / segments;
-        
-        for (let i = 1; i <= segments; i++) {
-            const segmentX = fromPos.x + deltaX * i;
-            const segmentY = fromPos.y + deltaY * i;
-            
-            // Добавляем случайное отклонение для эффекта извивающейся змеи
-            const offsetMagnitude = 20;
-            const controlX = segmentX + Math.sin(i * Math.PI / 2) * offsetMagnitude;
-            const controlY = segmentY + Math.cos(i * Math.PI / 2) * offsetMagnitude / 2;
-            
-            if (i === segments) {
-                this.ctx.quadraticCurveTo(controlX, controlY, toPos.x, toPos.y);
-            } else {
-                this.ctx.quadraticCurveTo(controlX, controlY, segmentX, segmentY);
-            }
-        }
+        this.ctx.lineTo(toPos.x, toPos.y);
         this.ctx.stroke();
         
-        // Рисуем голову змеи
-        this.ctx.fillStyle = '#c0392b';
-        this.ctx.beginPath();
-        this.ctx.arc(toPos.x, toPos.y, 10, 0, 2 * Math.PI);
-        this.ctx.fill();
-        
-        // Глаза змеи
-        this.ctx.fillStyle = '#ffffff';
-        this.ctx.beginPath();
-        this.ctx.arc(toPos.x - 3, toPos.y - 3, 2, 0, 2 * Math.PI);
-        this.ctx.fill();
-        this.ctx.beginPath();
-        this.ctx.arc(toPos.x + 3, toPos.y - 3, 2, 0, 2 * Math.PI);
-        this.ctx.fill();
-        
-        // Стрелка вниз в конце змеи
-        this.drawArrow(toPos.x, toPos.y + 15, 'down', '#e74c3c');
+        // Добавляем простую стрелку в конце
+        this.drawSimpleArrow(fromPos, toPos, '#27ae60');
     }
 
-    drawArrow(x, y, direction, color) {
+    // УПРОЩЕННАЯ отрисовка змеи - тонкие прямые линии
+    drawSnake(fromPos, toPos) {
+        this.ctx.strokeStyle = '#e74c3c';
+        this.ctx.lineWidth = 2; // Тонкая линия
+        this.ctx.setLineDash([5, 5]); // Пунктирная линия для отличия от лестниц
+        
+        // Рисуем простую прямую линию от начала к концу
+        this.ctx.beginPath();
+        this.ctx.moveTo(fromPos.x, fromPos.y);
+        this.ctx.lineTo(toPos.x, toPos.y);
+        this.ctx.stroke();
+        
+        // Сбрасываем пунктир
+        this.ctx.setLineDash([]);
+        
+        // Добавляем простую стрелку в конце
+        this.drawSimpleArrow(fromPos, toPos, '#e74c3c');
+    }
+
+    // Простая стрелка показывающая направление
+    drawSimpleArrow(fromPos, toPos, color) {
         this.ctx.fillStyle = color;
         this.ctx.strokeStyle = color;
-        this.ctx.lineWidth = 3;
+        this.ctx.lineWidth = 2;
         
-        const size = 8;
+        // Вычисляем направление
+        const deltaX = toPos.x - fromPos.x;
+        const deltaY = toPos.y - fromPos.y;
+        const length = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+        
+        if (length === 0) return;
+        
+        // Нормализуем направление
+        const unitX = deltaX / length;
+        const unitY = deltaY / length;
+        
+        // Размер стрелки
+        const arrowSize = 8;
+        
+        // Позиция стрелки (немного отступаем от конечной точки)
+        const arrowX = toPos.x - unitX * 10;
+        const arrowY = toPos.y - unitY * 10;
+        
+        // Рисуем треугольную стрелку
         this.ctx.beginPath();
-        
-        if (direction === 'up') {
-            this.ctx.moveTo(x, y - size);
-            this.ctx.lineTo(x - size/2, y);
-            this.ctx.lineTo(x + size/2, y);
-        } else if (direction === 'down') {
-            this.ctx.moveTo(x, y + size);
-            this.ctx.lineTo(x - size/2, y);
-            this.ctx.lineTo(x + size/2, y);
-        }
-        
+        this.ctx.moveTo(toPos.x, toPos.y);
+        this.ctx.lineTo(
+            arrowX - unitY * arrowSize / 2,
+            arrowY + unitX * arrowSize / 2
+        );
+        this.ctx.lineTo(
+            arrowX + unitY * arrowSize / 2,
+            arrowY - unitX * arrowSize / 2
+        );
         this.ctx.closePath();
         this.ctx.fill();
     }
