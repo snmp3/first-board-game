@@ -5,13 +5,13 @@ export class CanvasRenderer {
         this.initialized = false;
         this.debug = true;
         
-        // Настройки игрового поля
+        // Настройки игрового поля с увеличенными клетками
         this.boardConfig = {
             canvasWidth: 800,
             canvasHeight: 600,
             cellsPerRow: 12,
             cellsPerColumn: 10, // 120 клеток всего
-            cellSize: 45, // Уменьшен для лучшего размещения
+            cellSize: 55, // Увеличено с 45 до 55 для лучшего баланса
             borderWidth: 3,
             borderColor: '#2c3e50',
             backgroundColor: '#ecf0f1'
@@ -19,6 +19,31 @@ export class CanvasRenderer {
         
         // Рассчитываем отступы для центрирования
         this.calculatePadding();
+        
+        // Предопределенные лестницы и змеи для отрисовки линий
+        this.snakesAndLadders = [
+            // Лестницы (вверх)
+            { from: 4, to: 14, type: 'ladder' },
+            { from: 9, to: 31, type: 'ladder' },
+            { from: 21, to: 42, type: 'ladder' },
+            { from: 28, to: 84, type: 'ladder' },
+            { from: 36, to: 44, type: 'ladder' },
+            { from: 51, to: 67, type: 'ladder' },
+            { from: 71, to: 91, type: 'ladder' },
+            { from: 80, to: 100, type: 'ladder' },
+            
+            // Змеи (вниз)
+            { from: 16, to: 6, type: 'snake' },
+            { from: 47, to: 26, type: 'snake' },
+            { from: 49, to: 11, type: 'snake' },
+            { from: 56, to: 53, type: 'snake' },
+            { from: 62, to: 19, type: 'snake' },
+            { from: 64, to: 60, type: 'snake' },
+            { from: 87, to: 24, type: 'snake' },
+            { from: 93, to: 73, type: 'snake' },
+            { from: 95, to: 75, type: 'snake' },
+            { from: 98, to: 78, type: 'snake' }
+        ];
     }
 
     log(...args) {
@@ -44,6 +69,7 @@ export class CanvasRenderer {
         
         this.log(`Рассчитаны отступы: X=${this.boardConfig.paddingX}, Y=${this.boardConfig.paddingY}`);
         this.log(`Размер сетки: ${gridWidth}x${gridHeight}, Canvas: ${canvasWidth}x${canvasHeight}`);
+        this.log(`Размер клетки: ${cellSize}px`);
     }
 
     setupCanvas() {
@@ -72,7 +98,7 @@ export class CanvasRenderer {
             this.canvas.style.backgroundColor = this.boardConfig.backgroundColor;
 
             this.initialized = true;
-            this.log('✅ Canvas инициализирован');
+            this.log('✅ Canvas инициализирован с размером клеток:', this.boardConfig.cellSize);
             
             return true;
         } catch (error) {
@@ -98,10 +124,8 @@ export class CanvasRenderer {
             // Рисуем клетки с равномерными отступами
             this.drawCells();
             
-            // Рисуем лестницы и змеи
-            if (gameBoard) {
-                this.drawSnakesAndLadders(gameBoard);
-            }
+            // Рисуем лестницы и змеи (используем встроенные данные)
+            this.drawSnakesAndLadders();
             
         } catch (error) {
             this.error('Ошибка отрисовки доски:', error);
@@ -148,8 +172,16 @@ export class CanvasRenderer {
         } else if (number === 120) {
             cellColor = '#e74c3c'; // Финишная клетка - красная
             textColor = '#ffffff';
-        } else if (this.isSpecialCell(number)) {
-            cellColor = '#f39c12'; // Клетки с лестницами/змеями - оранжевые
+        } else if (this.isLadderStart(number)) {
+            cellColor = '#3498db'; // Начало лестницы - синяя
+            textColor = '#ffffff';
+        } else if (this.isSnakeStart(number)) {
+            cellColor = '#e67e22'; // Начало змеи - оранжевая
+            textColor = '#ffffff';
+        } else if (this.isLadderEnd(number)) {
+            cellColor = '#85c1e9'; // Конец лестницы - светло-синяя
+        } else if (this.isSnakeEnd(number)) {
+            cellColor = '#f8c471'; // Конец змеи - светло-оранжевая
         }
         
         // Рисуем фон клетки
@@ -163,29 +195,41 @@ export class CanvasRenderer {
         
         // Рисуем номер клетки
         this.ctx.fillStyle = textColor;
-        this.ctx.font = 'bold 12px Arial';
+        this.ctx.font = 'bold 14px Arial'; // Увеличен размер шрифта
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
         this.ctx.fillText(number.toString(), x + size / 2, y + size / 2);
+        
+        // Рисуем символы для специальных клеток
+        if (this.isLadderStart(number)) {
+            this.ctx.font = 'bold 16px Arial';
+            this.ctx.fillStyle = '#ffffff';
+            this.ctx.fillText('🪜', x + size / 2, y + size / 4);
+        } else if (this.isSnakeStart(number)) {
+            this.ctx.font = 'bold 16px Arial';
+            this.ctx.fillStyle = '#ffffff';
+            this.ctx.fillText('🐍', x + size / 2, y + size / 4);
+        }
     }
 
-    isSpecialCell(number) {
-        // Проверяем, есть ли на этой клетке лестница или змея
-        const specialCells = [
-            // Лестницы (начало)
-            4, 9, 21, 28, 36, 51, 71, 80,
-            // Змеи (начало)
-            16, 47, 49, 56, 62, 64, 87, 93, 95, 98
-        ];
-        return specialCells.includes(number);
+    isLadderStart(number) {
+        return this.snakesAndLadders.some(item => item.from === number && item.type === 'ladder');
     }
 
-    drawSnakesAndLadders(gameBoard) {
-        if (!gameBoard || !gameBoard.snakesAndLadders) return;
-        
-        const { cellSize, cellsPerRow, paddingX, paddingY } = this.boardConfig;
-        
-        gameBoard.snakesAndLadders.forEach(({ from, to, type }) => {
+    isSnakeStart(number) {
+        return this.snakesAndLadders.some(item => item.from === number && item.type === 'snake');
+    }
+
+    isLadderEnd(number) {
+        return this.snakesAndLadders.some(item => item.to === number && item.type === 'ladder');
+    }
+
+    isSnakeEnd(number) {
+        return this.snakesAndLadders.some(item => item.to === number && item.type === 'snake');
+    }
+
+    drawSnakesAndLadders() {
+        this.snakesAndLadders.forEach(({ from, to, type }) => {
             const fromPos = this.getCellPosition(from);
             const toPos = this.getCellPosition(to);
             
@@ -219,22 +263,35 @@ export class CanvasRenderer {
     }
 
     drawLadder(fromPos, toPos) {
+        // Основная линия лестницы
         this.ctx.strokeStyle = '#27ae60';
-        this.ctx.lineWidth = 4;
+        this.ctx.lineWidth = 6; // Увеличена толщина для лучшей видимости
         this.ctx.setLineDash([]);
         
-        // Рисуем основную линию лестницы
+        // Рисуем боковые стойки лестницы
+        const offset = 8;
+        
+        // Левая стойка
         this.ctx.beginPath();
-        this.ctx.moveTo(fromPos.x, fromPos.y);
-        this.ctx.lineTo(toPos.x, toPos.y);
+        this.ctx.moveTo(fromPos.x - offset, fromPos.y);
+        this.ctx.lineTo(toPos.x - offset, toPos.y);
+        this.ctx.stroke();
+        
+        // Правая стойка
+        this.ctx.beginPath();
+        this.ctx.moveTo(fromPos.x + offset, fromPos.y);
+        this.ctx.lineTo(toPos.x + offset, toPos.y);
         this.ctx.stroke();
         
         // Рисуем перекладины лестницы
-        const steps = 5;
+        this.ctx.strokeStyle = '#229954';
+        this.ctx.lineWidth = 4;
+        
+        const steps = Math.max(3, Math.floor(Math.abs(toPos.y - fromPos.y) / 25));
         for (let i = 1; i < steps; i++) {
             const ratio = i / steps;
-            const stepX1 = fromPos.x + (toPos.x - fromPos.x) * ratio - 8;
-            const stepX2 = fromPos.x + (toPos.x - fromPos.x) * ratio + 8;
+            const stepX1 = fromPos.x + (toPos.x - fromPos.x) * ratio - offset;
+            const stepX2 = fromPos.x + (toPos.x - fromPos.x) * ratio + offset;
             const stepY = fromPos.y + (toPos.y - fromPos.y) * ratio;
             
             this.ctx.beginPath();
@@ -242,30 +299,80 @@ export class CanvasRenderer {
             this.ctx.lineTo(stepX2, stepY);
             this.ctx.stroke();
         }
+        
+        // Стрелка вверх в конце лестницы
+        this.drawArrow(toPos.x, toPos.y - 15, 'up', '#27ae60');
     }
 
     drawSnake(fromPos, toPos) {
         this.ctx.strokeStyle = '#e74c3c';
-        this.ctx.lineWidth = 4;
+        this.ctx.lineWidth = 8; // Увеличена толщина
         this.ctx.setLineDash([]);
         
-        // Рисуем изогнутую линию змеи
+        // Рисуем изогнутую линию змеи с несколькими сегментами
         this.ctx.beginPath();
         this.ctx.moveTo(fromPos.x, fromPos.y);
         
-        // Создаем кривую Безье для эффекта змеи
-        const midX = (fromPos.x + toPos.x) / 2;
-        const midY = (fromPos.y + toPos.y) / 2;
-        const controlX = midX + (Math.random() - 0.5) * 40;
-        const controlY = midY + (Math.random() - 0.5) * 40;
+        // Создаем более плавную кривую змеи с несколькими контрольными точками
+        const segments = 3;
+        const deltaX = (toPos.x - fromPos.x) / segments;
+        const deltaY = (toPos.y - fromPos.y) / segments;
         
-        this.ctx.quadraticCurveTo(controlX, controlY, toPos.x, toPos.y);
+        for (let i = 1; i <= segments; i++) {
+            const segmentX = fromPos.x + deltaX * i;
+            const segmentY = fromPos.y + deltaY * i;
+            
+            // Добавляем случайное отклонение для эффекта извивающейся змеи
+            const offsetMagnitude = 20;
+            const controlX = segmentX + Math.sin(i * Math.PI / 2) * offsetMagnitude;
+            const controlY = segmentY + Math.cos(i * Math.PI / 2) * offsetMagnitude / 2;
+            
+            if (i === segments) {
+                this.ctx.quadraticCurveTo(controlX, controlY, toPos.x, toPos.y);
+            } else {
+                this.ctx.quadraticCurveTo(controlX, controlY, segmentX, segmentY);
+            }
+        }
         this.ctx.stroke();
         
         // Рисуем голову змеи
         this.ctx.fillStyle = '#c0392b';
         this.ctx.beginPath();
-        this.ctx.arc(toPos.x, toPos.y, 6, 0, 2 * Math.PI);
+        this.ctx.arc(toPos.x, toPos.y, 10, 0, 2 * Math.PI);
+        this.ctx.fill();
+        
+        // Глаза змеи
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.beginPath();
+        this.ctx.arc(toPos.x - 3, toPos.y - 3, 2, 0, 2 * Math.PI);
+        this.ctx.fill();
+        this.ctx.beginPath();
+        this.ctx.arc(toPos.x + 3, toPos.y - 3, 2, 0, 2 * Math.PI);
+        this.ctx.fill();
+        
+        // Стрелка вниз в конце змеи
+        this.drawArrow(toPos.x, toPos.y + 15, 'down', '#e74c3c');
+    }
+
+    drawArrow(x, y, direction, color) {
+        this.ctx.fillStyle = color;
+        this.ctx.strokeStyle = color;
+        this.ctx.lineWidth = 3;
+        
+        const size = 8;
+        this.ctx.beginPath();
+        
+        if (direction === 'up') {
+            this.ctx.moveTo(x, y - size);
+            this.ctx.lineTo(x - size/2, y);
+            this.ctx.lineTo(x + size/2, y);
+        } else if (direction === 'down') {
+            this.ctx.moveTo(x, y + size);
+            this.ctx.lineTo(x - size/2, y);
+            this.ctx.lineTo(x + size/2, y);
+        }
+        
+        this.ctx.closePath();
         this.ctx.fill();
     }
 
@@ -287,26 +394,26 @@ export class CanvasRenderer {
         const pos = this.getCellPosition(player.position + 1);
         const { cellSize } = this.boardConfig;
         
-        // Смещение для нескольких игроков на одной клетке
-        const offsetX = (index % 2) * 8 - 4;
-        const offsetY = Math.floor(index / 2) * 8 - 4;
+        // Смещение для нескольких игроков на одной клетке (увеличено для больших клеток)
+        const offsetX = (index % 2) * 12 - 6;
+        const offsetY = Math.floor(index / 2) * 12 - 6;
         
         const x = pos.x + offsetX;
         const y = pos.y + offsetY;
         
-        // Рисуем фишку игрока
+        // Рисуем фишку игрока (увеличен размер)
         this.ctx.fillStyle = player.color;
         this.ctx.strokeStyle = '#2c3e50';
         this.ctx.lineWidth = 2;
         
         this.ctx.beginPath();
-        this.ctx.arc(x, y, 12, 0, 2 * Math.PI);
+        this.ctx.arc(x, y, 15, 0, 2 * Math.PI); // Увеличен радиус с 12 до 15
         this.ctx.fill();
         this.ctx.stroke();
         
         // Рисуем инициал имени или номер игрока
         this.ctx.fillStyle = '#ffffff';
-        this.ctx.font = 'bold 10px Arial';
+        this.ctx.font = 'bold 12px Arial'; // Увеличен размер шрифта
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
         
@@ -338,6 +445,12 @@ export class CanvasRenderer {
         return this.getCellPosition(cellNumber);
     }
 
+    // Получение информации о специальной клетке
+    getSpecialCellInfo(cellNumber) {
+        const snakeOrLadder = this.snakesAndLadders.find(item => item.from === cellNumber);
+        return snakeOrLadder || null;
+    }
+
     // Отладочная информация
     getDebugInfo() {
         return {
@@ -350,7 +463,8 @@ export class CanvasRenderer {
             padding: {
                 x: this.boardConfig.paddingX,
                 y: this.boardConfig.paddingY
-            }
+            },
+            snakesAndLaddersCount: this.snakesAndLadders.length
         };
     }
 
