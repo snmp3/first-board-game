@@ -1,124 +1,174 @@
-import { GAME_CONFIG, JUMP_CELLS } from '../core/Constants.js';
+import { JUMP_CELLS } from '../core/Constants.js';
 
 export class GameBoard {
     constructor() {
-        this.size = GAME_CONFIG.boardSize;
-        this.cellsPerRow = GAME_CONFIG.cellsPerRow;
+        this.rows = 10;
+        this.columns = 12;
+        this.totalCells = 120;
+        
+        // ВАЖНО: используем данные из Constants.js
         this.jumpCells = JUMP_CELLS;
-        this.cellPositions = this.calculateCellPositions();
+        
+        // Создаем массив специальных клеток для быстрого доступа
+        this.specialCells = new Set(Object.keys(this.jumpCells).map(Number));
+        
+        this.debug = true;
+        
+        this.log('GameBoard инициализирован');
+        this.log('Клетки-прыгалки:', this.jumpCells);
+        this.log('Специальные клетки:', [...this.specialCells]);
     }
 
-    calculateCellPositions() {
-        const positions = [];
-        const { cellSize, cellsPerRow } = GAME_CONFIG;
-        
-        for (let i = 0; i < this.size; i++) {
-            const row = Math.floor(i / cellsPerRow);
-            const col = i % cellsPerRow;
-            
-            // Зигзагообразное расположение
-            const x = row % 2 === 0 ? col : (cellsPerRow - 1 - col);
-            const y = row;
-            
-            positions.push({
-                x: x * cellSize + cellSize / 2,
-                y: y * cellSize + cellSize / 2,
-                cellNumber: i
-            });
+    log(...args) {
+        if (this.debug) {
+            console.log('[GameBoard]', ...args);
         }
-        
-        return positions;
     }
 
-    getCellPosition(cellIndex) {
-        if (cellIndex < 0 || cellIndex >= this.size) {
+    error(...args) {
+        console.error('[GameBoard]', ...args);
+    }
+
+    // ОСНОВНОЙ метод для получения места прыжка
+    getJumpDestination(position) {
+        // Проверяем на всякий случай что позиция корректная
+        if (position < 0 || position >= this.totalCells) {
+            this.error(`Некорректная позиция: ${position}`);
             return null;
         }
-        return this.cellPositions[cellIndex];
+        
+        // Получаем место назначения прыжка
+        const destination = this.jumpCells[position];
+        
+        if (destination !== undefined) {
+            const isLadder = destination > position;
+            this.log(`🎯 Прыжок с позиции ${position + 1} на ${destination + 1} (${isLadder ? 'лестница' : 'змея'})`);
+            return destination;
+        }
+        
+        // Если прыжка нет, возвращаем null
+        return null;
     }
 
-    getJumpDestination(position) {
-        return this.jumpCells[position] || null;
+    // Проверка, является ли клетка специальной
+    isSpecialCell(position) {
+        return this.specialCells.has(position);
     }
 
-    isJumpCell(position) {
-        return position in this.jumpCells;
+    // Получение типа специальной клетки
+    getSpecialCellType(position) {
+        const destination = this.jumpCells[position];
+        if (destination === undefined) {
+            return null;
+        }
+        
+        return destination > position ? 'ladder' : 'snake';
     }
 
-    isLadder(position) {
-        const destination = this.getJumpDestination(position);
-        return destination !== null && destination > position;
-    }
-
-    isSnake(position) {
-        const destination = this.getJumpDestination(position);
-        return destination !== null && destination < position;
-    }
-
-    getSpecialCells() {
+    // Получение всех лестниц
+    getLadders() {
         const ladders = [];
+        for (const [from, to] of Object.entries(this.jumpCells)) {
+            if (parseInt(to) > parseInt(from)) {
+                ladders.push({ from: parseInt(from), to: parseInt(to), type: 'ladder' });
+            }
+        }
+        return ladders;
+    }
+
+    // Получение всех змей
+    getSnakes() {
         const snakes = [];
-        
-        for (const [start, end] of Object.entries(this.jumpCells)) {
-            const startPos = parseInt(start);
-            if (end > startPos) {
-                ladders.push({ start: startPos, end });
-            } else {
-                snakes.push({ start: startPos, end });
+        for (const [from, to] of Object.entries(this.jumpCells)) {
+            if (parseInt(to) < parseInt(from)) {
+                snakes.push({ from: parseInt(from), to: parseInt(to), type: 'snake' });
             }
         }
-        
-        return { ladders, snakes };
+        return snakes;
     }
 
-    getAdjacentCells(position) {
-        const adjacent = [];
-        const row = Math.floor(position / this.cellsPerRow);
-        const col = position % this.cellsPerRow;
-        
-        // Проверяем соседние клетки
-        const directions = [
-            [-1, 0], [1, 0], [0, -1], [0, 1], // основные направления
-            [-1, -1], [-1, 1], [1, -1], [1, 1] // диагонали
-        ];
-        
-        directions.forEach(([dRow, dCol]) => {
-            const newRow = row + dRow;
-            const newCol = col + dCol;
-            
-            if (newRow >= 0 && newRow < Math.ceil(this.size / this.cellsPerRow) &&
-                newCol >= 0 && newCol < this.cellsPerRow) {
-                const newPosition = newRow * this.cellsPerRow + newCol;
-                if (newPosition < this.size) {
-                    adjacent.push(newPosition);
-                }
-            }
-        });
-        
-        return adjacent;
+    // Получение всех лестниц и змей
+    getSnakesAndLadders() {
+        return [...this.getLadders(), ...this.getSnakes()];
     }
 
-    getPath(start, end) {
-        // Простейший путь по игровому полю
-        const path = [];
-        for (let i = Math.min(start, end); i <= Math.max(start, end); i++) {
-            path.push(i);
+    // Проверка корректности позиции
+    isValidPosition(position) {
+        return position >= 0 && position < this.totalCells;
+    }
+
+    // Получение координат клетки в сетке
+    getCellCoordinates(position) {
+        if (!this.isValidPosition(position)) {
+            return null;
         }
-        return path;
+        
+        const row = Math.floor(position / this.columns);
+        let col;
+        
+        // Учитываем змейку
+        if (row % 2 === 0) {
+            col = position % this.columns;
+        } else {
+            col = this.columns - 1 - (position % this.columns);
+        }
+        
+        return { row, col };
     }
 
-    validateMove(currentPosition, diceRoll) {
-        const newPosition = currentPosition + diceRoll;
+    // Получение позиции из координат
+    getPositionFromCoordinates(row, col) {
+        if (row < 0 || row >= this.rows || col < 0 || col >= this.columns) {
+            return null;
+        }
+        
+        let position;
+        if (row % 2 === 0) {
+            position = row * this.columns + col;
+        } else {
+            position = row * this.columns + (this.columns - 1 - col);
+        }
+        
+        return position;
+    }
+
+    // Проверка, является ли позиция финишной
+    isWinPosition(position) {
+        return position >= this.totalCells - 1;
+    }
+
+    // Отладочная информация
+    getDebugInfo() {
         return {
-            isValid: newPosition <= this.size - 1,
-            finalPosition: Math.min(newPosition, this.size - 1),
-            wouldWin: newPosition >= this.size - 1
+            totalCells: this.totalCells,
+            rows: this.rows,
+            columns: this.columns,
+            jumpCellsCount: Object.keys(this.jumpCells).length,
+            specialCellsCount: this.specialCells.size,
+            jumpCells: this.jumpCells,
+            ladders: this.getLadders(),
+            snakes: this.getSnakes()
         };
     }
 
-    reset() {
-        // Игровое поле не изменяется, поэтому сброс не требуется
-        console.log('Игровое поле готово к новой игре');
+    // Тестовый метод для проверки прыжков
+    testJumps() {
+        this.log('=== ТЕСТ ПРЫЖКОВ ===');
+        
+        Object.entries(this.jumpCells).forEach(([from, to]) => {
+            const fromNum = parseInt(from);
+            const toNum = parseInt(to);
+            const type = toNum > fromNum ? 'лестница' : 'змея';
+            
+            this.log(`${type}: ${fromNum + 1} → ${toNum + 1}`);
+            
+            // Тестируем метод getJumpDestination
+            const result = this.getJumpDestination(fromNum);
+            if (result !== toNum) {
+                this.error(`ОШИБКА: ожидали ${toNum}, получили ${result}`);
+            }
+        });
+        
+        this.log('=== КОНЕЦ ТЕСТА ===');
     }
 }
-
