@@ -316,6 +316,12 @@
             font-size: 16px;
         }
 
+        .modal-content input:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+
         .loading-indicator {
             display: none;
             text-align: center;
@@ -409,7 +415,6 @@
                         <label for="player-name">Имя игрока:</label>
                         <input type="text" id="player-name" placeholder="Введите имя" autocomplete="off">
                     </div>
-                    <!-- УБИРАЕМ onclick атрибуты - будут только addEventListener обработчики -->
                     <button class="btn" id="add-player">
                         Добавить игрока
                     </button>
@@ -453,7 +458,6 @@
             </div>
 
             <div style="text-align: center;">
-                <!-- УБИРАЕМ onclick атрибуты -->
                 <button class="btn" id="start-game" disabled>
                     Начать игру
                 </button>
@@ -462,17 +466,17 @@
                 </button>
             </div>
 
-            <!-- Отладочные кнопки (только в режиме разработки) -->
+            <!-- Отладочные кнопки -->
             <div style="text-align: center; margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee;">
                 <small style="color: #666;">Отладка:</small><br>
                 <button class="btn" onclick="window.debugGame?.()" style="font-size: 12px; padding: 8px 16px;">
                     Проверить состояние
                 </button>
-                <button class="btn" onclick="window.forceUnlockButtons?.()" style="font-size: 12px; padding: 8px 16px;">
-                    Разблокировать кнопки
+                <button class="btn" onclick="window.fixModals?.()" style="font-size: 12px; padding: 8px 16px;">
+                    Исправить модальные окна
                 </button>
-                <button class="btn" onclick="console.clear()" style="font-size: 12px; padding: 8px 16px;">
-                    Очистить консоль
+                <button class="btn" onclick="window.game?.modalManager?.testSubmitButton?.()" style="font-size: 12px; padding: 8px 16px;">
+                    Тест кнопки "Ответить"
                 </button>
             </div>
         </div>
@@ -513,14 +517,15 @@
     </div>
 
     <!-- Модальные окна -->
+    <!-- ИСПРАВЛЕННОЕ модальное окно вопроса -->
     <div id="question-modal" class="modal">
         <div class="modal-content">
             <h3>Вопрос</h3>
             <p id="question-text"></p>
             <input type="text" id="answer-input" placeholder="Введите ответ" autocomplete="off">
-            <div>
-                <button class="btn" id="submit-answer">Ответить</button>
-                <button class="btn" id="skip-question">Пропустить</button>
+            <div style="margin-top: 20px;">
+                <button class="btn" id="submit-answer" style="background: #27ae60;">Ответить</button>
+                <button class="btn" id="skip-question" style="background: #e74c3c;">Пропустить</button>
             </div>
         </div>
     </div>
@@ -529,51 +534,21 @@
         <div class="modal-content">
             <h3 id="message-title">Сообщение</h3>
             <p id="message-text"></p>
-            <button class="btn" id="close-message">OK</button>
+            <div style="margin-top: 20px;">
+                <button class="btn" id="close-message">OK</button>
+            </div>
         </div>
     </div>
 
     <div id="results-modal" class="modal">
         <div class="modal-content">
             <div id="results-content"></div>
-            <button class="btn" id="close-results">Закрыть</button>
+            <div style="margin-top: 20px;">
+                <button class="btn" id="close-results">Закрыть</button>
+            </div>
         </div>
     </div>
 
     <script type="module" src="main.js"></script>
-    
-    <!-- Fallback скрипт для критических ошибок -->
-    <script>
-        // Показываем отладочную информацию в разработке
-        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-            setTimeout(() => {
-                const debugElement = document.getElementById('debug-info');
-                if (debugElement) {
-                    debugElement.classList.add('active');
-                }
-            }, 1000);
-        }
-
-        // Обработка ошибок модулей
-        window.addEventListener('error', (e) => {
-            if (e.message.includes('module')) {
-                console.error('Ошибка загрузки модуля:', e);
-                const errorElement = document.getElementById('error-display');
-                if (errorElement) {
-                    errorElement.style.display = 'block';
-                    errorElement.innerHTML = `
-                        <h3>Ошибка загрузки модулей</h3>
-                        <p>Убедитесь, что:</p>
-                        <ul style="text-align: left;">
-                            <li>Игра запускается через веб-сервер (http://)</li>
-                            <li>Все файлы модулей находятся в правильных папках</li>
-                            <li>Нет блокировки CORS в браузере</li>
-                        </ul>
-                        <button onclick="location.reload()" class="btn">Перезагрузить</button>
-                    `;
-                }
-            }
-        });
-    </script>
 </body>
 </html>
