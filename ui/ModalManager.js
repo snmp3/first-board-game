@@ -3,6 +3,9 @@ export class ModalManager {
         this.initialized = false;
         this.currentModal = null;
         this.autoCloseTimer = null;
+        this.answerCallback = null;
+        this.messageCallback = null;
+        this.resultsCallback = null;
         this.debug = true;
     }
 
@@ -43,43 +46,59 @@ export class ModalManager {
         const answerInput = document.getElementById('answer-input');
         
         if (submitAnswerBtn) {
-            submitAnswerBtn.addEventListener('click', () => {
+            // Убираем старые обработчики
+            submitAnswerBtn.replaceWith(submitAnswerBtn.cloneNode(true));
+            const newSubmitBtn = document.getElementById('submit-answer');
+            newSubmitBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 this.submitAnswer();
             });
         }
         
         if (skipQuestionBtn) {
-            skipQuestionBtn.addEventListener('click', () => {
+            // Убираем старые обработчики
+            skipQuestionBtn.replaceWith(skipQuestionBtn.cloneNode(true));
+            const newSkipBtn = document.getElementById('skip-question');
+            newSkipBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 this.skipQuestion();
             });
         }
         
         if (answerInput) {
+            // Убираем старые обработчики
+            answerInput.replaceWith(answerInput.cloneNode(true));
+            const newAnswerInput = document.getElementById('answer-input');
+            
             // ИСПРАВЛЕНИЕ: Убираем все ограничения на ввод символов, включая пробелы
-            answerInput.addEventListener('keypress', (e) => {
+            newAnswerInput.addEventListener('keypress', (e) => {
                 // Разрешаем ввод ВСЕХ символов, включая пробелы
                 if (e.key === 'Enter') {
                     e.preventDefault();
                     this.submitAnswer();
                 }
-                // Убираем любые другие ограничения - разрешаем все символы
             });
             
-            // Убираем ограничения на paste (вставку)
-            answerInput.addEventListener('paste', (e) => {
-                // Разрешаем вставку любого текста
-            });
-            
-            // Убираем ограничения на input
-            answerInput.addEventListener('input', (e) => {
-                // Разрешаем любой ввод
+            // Убираем стилизацию ошибки при вводе
+            newAnswerInput.addEventListener('input', (e) => {
+                if (e.target.style.borderColor === 'rgb(231, 76, 60)') {
+                    e.target.style.borderColor = '';
+                    e.target.placeholder = 'Введите ответ (можно использовать пробелы)';
+                }
             });
         }
         
         // Обработчики для модального окна сообщений
         const closeMessageBtn = document.getElementById('close-message');
         if (closeMessageBtn) {
-            closeMessageBtn.addEventListener('click', () => {
+            // Убираем старые обработчики
+            closeMessageBtn.replaceWith(closeMessageBtn.cloneNode(true));
+            const newCloseBtn = document.getElementById('close-message');
+            newCloseBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 this.closeCurrentModal();
             });
         }
@@ -87,12 +106,30 @@ export class ModalManager {
         // Обработчики для модального окна результатов
         const closeResultsBtn = document.getElementById('close-results');
         if (closeResultsBtn) {
-            closeResultsBtn.addEventListener('click', () => {
+            // Убираем старые обработчики
+            closeResultsBtn.replaceWith(closeResultsBtn.cloneNode(true));
+            const newCloseResultsBtn = document.getElementById('close-results');
+            newCloseResultsBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 this.closeCurrentModal();
             });
         }
         
         // Закрытие модальных окон по клику вне области
+        [this.questionModal, this.messageModal, this.resultsModal].forEach(modal => {
+            if (modal) {
+                // Убираем старые обработчики
+                modal.replaceWith(modal.cloneNode(true));
+            }
+        });
+        
+        // Обновляем ссылки после клонирования
+        this.questionModal = document.getElementById('question-modal');
+        this.messageModal = document.getElementById('message-modal');
+        this.resultsModal = document.getElementById('results-modal');
+        
+        // Добавляем новые обработчики
         [this.questionModal, this.messageModal, this.resultsModal].forEach(modal => {
             if (modal) {
                 modal.addEventListener('click', (e) => {
@@ -114,7 +151,8 @@ export class ModalManager {
     showQuestion(questionText, answerCallback) {
         this.log('Показ вопроса:', questionText);
         
-        this.closeCurrentModal();
+        // КРИТИЧЕСКИ ВАЖНО: Полное закрытие всех модальных окон
+        this.forceCloseAll();
         
         const questionTextElement = document.getElementById('question-text');
         const answerInput = document.getElementById('answer-input');
@@ -126,6 +164,7 @@ export class ModalManager {
         if (answerInput) {
             answerInput.value = '';
             answerInput.placeholder = 'Введите ответ (можно использовать пробелы)';
+            answerInput.style.borderColor = '';
         }
         
         this.answerCallback = answerCallback;
@@ -149,7 +188,8 @@ export class ModalManager {
         
         this.log(`Показ сообщения: ${title} (автозакрытие: ${autoClose}, бот: ${isBot})`);
         
-        this.closeCurrentModal();
+        // КРИТИЧЕСКИ ВАЖНО: Полное закрытие всех модальных окон
+        this.forceCloseAll();
         
         const titleElement = document.getElementById('message-title');
         const messageElement = document.getElementById('message-text');
@@ -179,7 +219,8 @@ export class ModalManager {
     showResults(resultsHTML, callback = null) {
         this.log('Показ результатов игры');
         
-        this.closeCurrentModal();
+        // КРИТИЧЕСКИ ВАЖНО: Полное закрытие всех модальных окон
+        this.forceCloseAll();
         
         const resultsContent = document.getElementById('results-content');
         if (resultsContent) {
@@ -193,13 +234,47 @@ export class ModalManager {
     showModal(modal) {
         if (!modal) return false;
         
+        // Убеждаемся что предыдущие модальные окна закрыты
+        this.forceCloseAll();
+        
         this.currentModal = modal;
         modal.classList.add('active');
+        modal.style.display = 'flex';
         
         // Блокируем прокрутку страницы
         document.body.style.overflow = 'hidden';
         
+        this.log(`Модальное окно ${modal.id} показано`);
+        
         return true;
+    }
+
+    // НОВЫЙ метод принудительного закрытия всех модальных окон
+    forceCloseAll() {
+        // Очищаем таймеры
+        if (this.autoCloseTimer) {
+            clearTimeout(this.autoCloseTimer);
+            this.autoCloseTimer = null;
+        }
+        
+        // Принудительно закрываем все модальные окна
+        [this.questionModal, this.messageModal, this.resultsModal].forEach(modal => {
+            if (modal) {
+                modal.classList.remove('active');
+                modal.style.display = 'none';
+            }
+        });
+        
+        // Восстанавливаем прокрутку
+        document.body.style.overflow = '';
+        
+        // Сбрасываем callbacks без их выполнения
+        this.answerCallback = null;
+        this.messageCallback = null;
+        this.resultsCallback = null;
+        this.currentModal = null;
+        
+        this.log('Все модальные окна принудительно закрыты');
     }
 
     closeCurrentModal() {
@@ -212,28 +287,40 @@ export class ModalManager {
         
         if (!this.currentModal) return;
         
+        const currentModalId = this.currentModal.id;
+        
         this.currentModal.classList.remove('active');
+        this.currentModal.style.display = 'none';
         
         // Восстанавливаем прокрутку страницы
         document.body.style.overflow = '';
         
         // Выполняем callback в зависимости от типа модального окна
         if (this.currentModal === this.messageModal && this.messageCallback) {
-            this.messageCallback();
+            const callback = this.messageCallback;
             this.messageCallback = null;
+            this.currentModal = null;
+            callback();
         } else if (this.currentModal === this.resultsModal && this.resultsCallback) {
-            this.resultsCallback();
+            const callback = this.resultsCallback;
             this.resultsCallback = null;
+            this.currentModal = null;
+            callback();
+        } else {
+            this.currentModal = null;
         }
         
-        this.currentModal = null;
+        this.log(`Модальное окно ${currentModalId} закрыто`);
     }
 
     submitAnswer() {
         const answerInput = document.getElementById('answer-input');
-        if (!answerInput || !this.answerCallback) return;
+        if (!answerInput || !this.answerCallback) {
+            this.log('Нет поля ввода или callback для отправки ответа');
+            return;
+        }
         
-        const answer = answerInput.value.trim(); // Разрешаем пробелы в ответе
+        const answer = answerInput.value.trim();
         this.log('Отправка ответа:', answer);
         
         if (answer === '') {
@@ -244,21 +331,36 @@ export class ModalManager {
             return;
         }
         
+        // Сохраняем callback перед закрытием
+        const callback = this.answerCallback;
+        this.answerCallback = null;
+        
+        // Закрываем модальное окно
         this.closeCurrentModal();
         
-        if (this.answerCallback) {
-            this.answerCallback(answer);
-            this.answerCallback = null;
+        // Вызываем callback
+        if (callback) {
+            setTimeout(() => {
+                callback(answer);
+            }, 100);
         }
     }
 
     skipQuestion() {
         this.log('Пропуск вопроса');
+        
+        // Сохраняем callback перед закрытием
+        const callback = this.answerCallback;
+        this.answerCallback = null;
+        
+        // Закрываем модальное окно
         this.closeCurrentModal();
         
-        if (this.answerCallback) {
-            this.answerCallback(''); // Пустой ответ означает пропуск
-            this.answerCallback = null;
+        // Вызываем callback с пустым ответом
+        if (callback) {
+            setTimeout(() => {
+                callback('');
+            }, 100);
         }
     }
 
@@ -308,11 +410,26 @@ export class ModalManager {
             initialized: this.initialized,
             currentModal: this.currentModal?.id || null,
             hasAutoCloseTimer: !!this.autoCloseTimer,
+            hasAnswerCallback: !!this.answerCallback,
+            hasMessageCallback: !!this.messageCallback,
+            hasResultsCallback: !!this.resultsCallback,
             modalStates: {
                 question: this.questionModal?.classList.contains('active') || false,
                 message: this.messageModal?.classList.contains('active') || false,
                 results: this.resultsModal?.classList.contains('active') || false
             }
         };
+    }
+
+    // Экстренный сброс всех состояний
+    emergencyReset() {
+        this.log('ЭКСТРЕННЫЙ СБРОС ModalManager');
+        
+        this.forceCloseAll();
+        
+        // Переинициализация обработчиков
+        this.setupEventListeners();
+        
+        this.log('ModalManager сброшен экстренно');
     }
 }
